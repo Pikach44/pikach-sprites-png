@@ -1,0 +1,3033 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="max-age=86400">
+    <title>Pikach-DEX</title>
+    <link rel="icon" href="https://pikach44.github.io/pikach-sprites-png/pokeball.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --red: #cc0000;
+            --pf: 'Press Start 2P', monospace;
+            --red-dark: #880000;
+            --red-light: #ff4444;
+            --bg: #0d0d0d;
+            --card-bg: #1a1a1a;
+            --rarity-junk: #888888;
+            --rarity-common: #dddddd;
+            --rarity-uncommon: #1fdf64;
+            --rarity-rare: #00d2ff;
+            --rarity-epic: #cc66ff;
+            --rarity-legendary: #ffae00;
+        }
+
+        body {
+            font-family:var(--pf);
+            background: #111;
+            color: #fff;
+            min-height: 100vh;
+            padding: 16px;
+                    }
+
+        /* Scanlines */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0px, rgba(0,0,0,0.07) 1px, transparent 1px, transparent 3px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Layout */
+        .wrap { max-width: 960px; margin: 0 auto; background: #1a0000; border: 4px solid var(--red); border-radius: 10px; overflow: hidden; }
+
+        /* Topbar */
+        .topbar { background: var(--red); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--red-dark); }
+        .topbar-title { font-size:15px; color: #fff; letter-spacing: 1px; text-shadow: 2px 2px 0 var(--red-dark); }
+        .pokeballs { display: flex; gap: 7px; align-items: center; }
+        .pokeball { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); background: linear-gradient(to bottom, #fff 0%, #fff 48%, #333 48%, #333 52%, var(--red) 52%, var(--red) 100%); position: relative; }
+        .pokeball::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 6px; height: 6px; background: white; border-radius: 50%; border: 1.5px solid #333; }
+
+        /* Tabs */
+        .tabs-row { display: flex; background: #111; border-bottom: 2px solid var(--red); }
+        .tab-btn { flex: 1; text-align: center; padding: 9px 4px; font-family:var(--pf); font-size:11px; color: #555; cursor: pointer; letter-spacing: 0.5px; border: none; border-right: 1px solid #222; background: transparent; transition: background 0.15s, color 0.15s; }
+        .tab-btn:last-child { border-right: none; }
+        .tab-btn:hover { color: #aaa; background: #1a0000; }
+        .tab-btn.active { background: var(--red); color: #fff; }
+
+        /* Search */
+        .search-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg); border-bottom: 1px solid #2a0000; flex-wrap: wrap; }
+        .btn-all { font-family:var(--pf); font-size:9px; padding: 6px 9px; background: #111; color: var(--red); border: 2px solid var(--red); cursor: pointer; border-radius: 3px; letter-spacing: 0.5px; transition: background 0.15s; white-space: nowrap; }
+        .btn-all:hover { background: #2a0000; }
+        .search-input { flex: 1; min-width: 120px; font-family:var(--pf); font-size:11px; padding: 7px 10px; background: #111; color: #fff; border: 2px solid #333; border-radius: 3px; outline: none; letter-spacing: 0.5px; transition: border-color 0.15s; }
+        .search-input:focus { border-color: var(--red); }
+        .search-input::placeholder { color: #333; }
+        .btn-search { font-family:var(--pf); font-size:9px; padding: 7px 12px; background: var(--red); color: #fff; border: 2px solid var(--red-light); cursor: pointer; border-radius: 3px; letter-spacing: 0.5px; text-shadow: 1px 1px 0 var(--red-dark); transition: opacity 0.15s; white-space: nowrap; }
+        .btn-search:hover { opacity: 0.85; }
+        .btn-search:active { transform: scale(0.97); }
+
+        /* Gen bar */
+        .gen-bar { display: none; flex-wrap: wrap; gap: 6px; padding: 10px 14px; background: #111; border-bottom: 1px solid #2a0000; }
+        .gen-btn { font-family:var(--pf); font-size:9px; padding: 5px 10px; background: #1a1a1a; color: #555; border: 1px solid #333; cursor: pointer; border-radius: 2px; letter-spacing: 0.5px; transition: all 0.15s; }
+        .gen-btn:hover { border-color: var(--red); color: #aaa; }
+        .gen-btn.active { background: var(--red); color: #fff; border-color: var(--red-light); }
+
+        /* Stats bar */
+        .stats-bar { background: #111; border-bottom: 1px solid #2a0000; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+        .stat-dex { font-size:11px; color: var(--red); letter-spacing: 0.5px; }
+        .rarity-pills { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+        .pill { font-family:var(--pf); font-size:12px; padding: 5px 9px; border-radius: 2px; letter-spacing: 0.5px; }
+        .pill-doublon   { background: #1a1a2a; color: #aaaaff; border: 1px solid #aaaaff; cursor: pointer; }
+        .pill-doublon.active { background: #aaaaff; color: #000; }
+        .pill-Junk      { background: #222; color: var(--rarity-junk); }
+        .pill-Common    { background: #222; color: var(--rarity-common); }
+        .pill-Uncommon  { background: #1a3a1a; color: var(--rarity-uncommon); }
+        .pill-Rare      { background: #001a2a; color: var(--rarity-rare); }
+        .pill-Epic      { background: #1a0033; color: var(--rarity-epic); }
+        .pill-Legendary { background: #332200; color: var(--rarity-legendary); }
+
+        /* Status */
+        #status { text-align: center; padding: 6px; font-size:9px; color: #444; background: var(--bg); letter-spacing: 0.5px; min-height: 24px; border-bottom: 1px solid #1a0000; }
+
+        /* Inventory controls */
+        .inv-controls { display: none; align-items: center; gap: 8px; padding: 8px 14px; background: #0d0d0d; border-bottom: 1px solid #2a0000; flex-wrap: wrap; }
+        .filter-input { flex: 1; min-width: 120px; font-family:var(--pf); font-size:11px; padding: 6px 10px; background: #111; color: #fff; border: 2px solid #333; border-radius: 3px; outline: none; transition: border-color 0.15s; }
+        .filter-input:focus { border-color: var(--red); }
+        .filter-input::placeholder { color: #333; }
+        .sort-select { font-family:var(--pf); font-size:14px; padding: 6px 8px; background: #111; color: #aaa; border: 2px solid #333; border-radius: 3px; outline: none; cursor: pointer; }
+        .sort-select:focus { border-color: var(--red); }
+        .total-value { font-size:11px; color: #ffae00; letter-spacing: 0.5px; white-space: nowrap; }
+
+        /* Card grid */
+        .inventory { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 12px; background: var(--bg); }
+
+        /* Card */
+        .card { background: var(--card-bg); border: 2px solid #2a2a2a; border-radius: 4px; padding: 8px 6px 6px; text-align: center; position: relative; transition: border-color 0.15s, background 0.15s; }
+        .card:hover { border-color: var(--red); background: #1f0000; }
+        .corner-dot { position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; z-index: 2; }
+
+        .badge-count { position: absolute; bottom: 4px; left: 4px; font-size:9px; background: #222; color: #aaa; padding: 2px 5px; border-radius: 2px; letter-spacing: 0.5px; z-index: 2; }
+        .badge-owned { position: absolute; top: 4px; left: 4px; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.7); background: linear-gradient(to bottom, #fff 0%, #fff 45%, #333 45%, #333 55%, var(--red) 55%, var(--red) 100%); z-index: 2; }
+        .badge-owned::after { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:4px; height:4px; background:#fff; border-radius:50%; border:1px solid #333; }
+
+        .sprite-container { background: #111; border-radius: 3px; height: 76px; display: flex; align-items: center; justify-content: center; margin-bottom: 7px; position: relative; }
+        .sprite-container img { max-width: 64px; max-height: 64px; object-fit: contain; transition: transform 0.2s; image-rendering: pixelated; position: relative; z-index: 0; }
+        .card:hover .sprite-container img { transform: scale(1.1); }
+        .card-name { font-size:12px; letter-spacing: 0.3px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.6; }
+        .card-val { font-size:12px; color: #666; display: flex; align-items: center; justify-content: center; gap: 2px; line-height: 1; }
+        .card-currency { color: #886633; font-size:11px; }
+
+        .not-owned .sprite-container img { filter: brightness(0); opacity: 0.2; }
+        .not-owned .card-name { color: #2a2a2a !important; }
+        .not-owned .card-val  { display: none; }
+        .not-owned:hover { border-color: #333; background: var(--card-bg); }
+
+        /* Rarity colors */
+        .rarity-Junk      { color: var(--rarity-junk); }
+        .rarity-Common    { color: var(--rarity-common); }
+        .rarity-Uncommon  { color: var(--rarity-uncommon); }
+        .rarity-Rare      { color: var(--rarity-rare); }
+        .rarity-Epic      { color: var(--rarity-epic); }
+        .rarity-Legendary { color: var(--rarity-legendary); }
+        .dot-Junk      { background: var(--rarity-junk); }
+        .dot-Common    { background: var(--rarity-common); }
+        .dot-Uncommon  { background: var(--rarity-uncommon); }
+        .dot-Rare      { background: var(--rarity-rare); }
+        .dot-Epic      { background: var(--rarity-epic); }
+        .dot-Legendary { background: var(--rarity-legendary); }
+
+        /* Tooltip */
+        .card-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--red); border-radius: 3px; padding: 7px 10px; font-size:12px; color: #ccc; white-space: nowrap; z-index: 10; pointer-events: none; }
+        .card:hover .card-tooltip { display: block; }
+
+        /* Toast notifications */
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast { font-family: var(--pf); font-size:11px; padding: 10px 14px; border-radius: 3px; letter-spacing: 0.5px; pointer-events: none; animation: toastIn 0.15s ease, toastOut 0.3s ease 2.7s forwards; white-space: nowrap; border: 2px solid; }
+        .toast-success { background: #0a2a0a; color: #1fdf64; border-color: #1fdf64; }
+        .toast-error   { background: #2a0a0a; color: #ff4444; border-color: #ff4444; }
+        .toast-info    { background: #0a0a2a; color: #00d2ff; border-color: #00d2ff; }
+        @keyframes toastIn  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+
+        .bottombar { background: var(--red); border-top: 3px solid var(--red-dark); padding: 7px 14px; display: flex; justify-content: space-between; align-items: center; }
+        .bottombar span { font-size:9px; color: rgba(255,255,255,0.65); letter-spacing: 0.5px; }
+
+        /* Pagination */
+        .pagination { display: none; justify-content: center; align-items: center; gap: 10px; padding: 12px; background: var(--bg); border-top: 1px solid #2a0000; }
+        .pagination.visible { display: flex; }
+        .page-btn { font-family:var(--pf); font-size:12px; padding: 7px 14px; background: #111; color: #aaa; border: 2px solid #333; cursor: pointer; border-radius: 3px; transition: all 0.15s; }
+        .page-btn:hover { border-color: var(--red); color: #fff; }
+        .page-btn:disabled { opacity: 0.25; cursor: default; border-color: #222; color: #444; }
+        .page-info { font-size:11px; color: #555; letter-spacing: 0.5px; min-width: 80px; text-align: center; }
+
+        /* Leaderboard */
+        .lb-controls { display: none; gap: 6px; padding: 10px 14px; background: #0d0d0d; border-bottom: 1px solid #2a0000; flex-wrap: wrap; align-items: center; justify-content: center; }
+        .lb-sort-btn { font-family:var(--pf); font-size:11px; padding: 6px 10px; background: #111; color: #555; border: 1px solid #333; cursor: pointer; border-radius: 2px; letter-spacing: 0.5px; transition: all 0.15s; }
+        .lb-sort-btn:hover { border-color: var(--red); color: #aaa; }
+        .lb-sort-btn.active { background: var(--red); color: #fff; border-color: var(--red-light); }
+        .lb-search { font-family:var(--pf); font-size:9px; padding: 6px 10px; background: #111; color: #fff; border: 1px solid #333; border-radius: 2px; outline: none; width: 140px; }
+        .lb-search:focus { border-color: var(--red); }
+        .lb-search::placeholder { color: #333; }
+        .lb-autocomplete-wrap { position: relative; display: inline-block; }
+        .search-autocomplete-wrap { position: relative; flex: 1; min-width: 120px; }
+        .lb-autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: #111; border: 1px solid var(--red); border-top: none; border-radius: 0 0 3px 3px; z-index: 100; max-height: 180px; overflow-y: auto; }
+        .lb-autocomplete-item { font-family:var(--pf); font-size:9px; padding: 7px 10px; color: #aaa; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1a1a1a; white-space: nowrap; }
+        .lb-autocomplete-item:last-child { border-bottom: none; }
+        .lb-autocomplete-item:hover, .lb-autocomplete-item.active { background: #1f0000; color: #fff; }
+        .lb-autocomplete-item img { width: 20px; height: 20px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
+        .lb-autocomplete-highlight { color: var(--red); }
+        /* Podium */
+        .lb-podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; padding: 20px 14px 0; background: var(--bg); }
+        .lb-podium-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.15s; }
+        .lb-podium-item:hover { transform: translateY(-4px); }
+        .lb-podium-card { border-radius: 6px; padding: 10px 8px; text-align: center; width: 110px; border: 2px solid #2a2a2a; }
+        .lb-podium-card.rank-1 { background: linear-gradient(180deg, #332200 0%, #1a1200 100%); border-color: #ffae00; box-shadow: 0 0 16px rgba(255,174,0,0.25); }
+        .lb-podium-card.rank-2 { background: linear-gradient(180deg, #1e1e1e 0%, #111 100%); border-color: #aaaaaa; }
+        .lb-podium-card.rank-3 { background: linear-gradient(180deg, #1e1e1e 0%, #111 100%); border-color: #cd7f32; }
+        .lb-podium-crown { font-size:21px; margin-bottom: 4px; }
+        .lb-podium-sprite { width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated; }
+        .lb-podium-name { font-size:9px; color: #fff; margin: 6px 0 3px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 95px; }
+        .lb-podium-val  { font-size:11px; color: #ffae00; }
+        .lb-podium-sub  { font-size:8px; color: #555; margin-top: 2px; }
+        .lb-podium-base { border-radius: 3px 3px 0 0; width: 110px; }
+        .lb-podium-base.rank-1 { background: #ffae00; height: 14px; }
+        .lb-podium-base.rank-2 { background: #888888; height: 9px; }
+        .lb-podium-base.rank-3 { background: #cd7f32; height: 5px; }
+        .lb-podium-streak { font-size:9px; margin-top: 3px; }
+        /* Table leaderboard */
+        .lb-global-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px; background: var(--bg); border-bottom: 1px solid #2a0000; }
+        .lb-stat-card { background: #111; border: 1px solid #2a2a2a; border-radius: 4px; padding: 10px 12px; text-align: center; position: relative; overflow: hidden; }
+        .lb-stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+        .lb-stat-card.s-red::before    { background: var(--red); }
+        .lb-stat-card.s-gold::before   { background: #ffae00; }
+        .lb-stat-card.s-blue::before   { background: #00d2ff; }
+        .lb-stat-card.s-purple::before { background: #cc66ff; }
+        .lb-stat-label { font-family:var(--pf); font-size:8px; color: #555; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .lb-stat-value { font-family:var(--pf); font-size:14px; margin-bottom: 4px; }
+        .lb-stat-value.s-red    { color: var(--red); }
+        .lb-stat-value.s-gold   { color: #ffae00; }
+        .lb-stat-value.s-blue   { color: #00d2ff; }
+        .lb-stat-value.s-purple { color: #cc66ff; }
+        .lb-stat-sub { font-family:var(--pf); font-size:8px; color: #444; }
+        .lb-stat-sprite { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; display: block; margin: 4px auto 0; }
+        .lb-table-wrap { padding: 10px 14px 14px; background: var(--bg); }
+        .lb-table { width: 100%; border-collapse: collapse; font-size:12px; }
+        .lb-table th { background: #111; color: #555; padding: 7px 10px; text-align: left; border-bottom: 1px solid #2a0000; font-size:9px; letter-spacing: 0.5px; white-space: nowrap; cursor: pointer; transition: color 0.15s; user-select: none; }
+        .lb-table th:hover { color: #aaa; }
+        .lb-table th.sorted { color: var(--red); }
+        .lb-table td { padding: 7px 10px; border-bottom: 1px solid #1a1a1a; vertical-align: middle; white-space: nowrap; }
+        .lb-table tr:hover td { background: #1f0000; cursor: pointer; }
+        .lb-rank { color: #555; font-size:9px; width: 28px; }
+        .lb-username { color: #fff; font-size:11px; }
+        .lb-val { color: #aaa; font-size:9px; text-align: right; }
+        .lb-val.highlight { color: var(--rarity-legendary); }
+        .lb-sprite { width: 28px; height: 28px; object-fit: contain; image-rendering: pixelated; }
+        .lb-best { display: flex; align-items: center; gap: 6px; }
+        .lb-completion-wrap { display: flex; align-items: center; gap: 5px; }
+        .lb-completion-bar { width: 50px; height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
+        .lb-completion-fill { height: 100%; background: var(--red); border-radius: 2px; }
+        .lb-streak-val { font-size:9px; }
+        .lb-streak-val.hot  { color: #ff4400; }
+        .lb-streak-val.warm { color: #ffae00; }
+        .lb-streak-val.cold { color: #444; }
+
+        /* Profile overlay */
+        .profile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: flex-start; justify-content: center; padding: 16px; overflow-y: auto; }
+        .profile-overlay.open { display: flex; }
+        .profile-box { background: #1a0000; border: 3px solid var(--red); border-radius: 10px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+        .profile-header { background: var(--red); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--red-dark); }
+        .profile-title { font-size:14px; color: #fff; text-shadow: 2px 2px 0 var(--red-dark); }
+        .profile-close { font-family:var(--pf); font-size:12px; background: var(--red-dark); color: #fff; border: none; padding: 5px 8px; cursor: pointer; border-radius: 2px; }
+        .profile-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px 12px; border-bottom: 1px solid #2a0000; }
+        .profile-stat { background: #111; border: 1px solid #2a2a2a; border-radius: 4px; padding: 7px 4px; text-align: center; }
+        .profile-stat-label { font-size:8px; color: #555; margin-bottom: 5px; letter-spacing: 0.5px; }
+        .profile-stat-value { font-size:14px; color: var(--red); }
+        .profile-best { padding: 10px 14px; border-bottom: 1px solid #2a0000; display: flex; align-items: center; gap: 10px; }
+        .profile-best-label { font-size:9px; color: #555; margin-bottom: 4px; }
+        .profile-best-name  { font-size:14px; color: var(--rarity-legendary); }
+        .profile-best-img   { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+        .profile-rarity-bar { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid #2a0000; }
+        .profile-catches-title { font-size:11px; color: #555; padding: 8px 14px 4px; letter-spacing: 0.5px; }
+        .profile-catches-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; padding: 8px 12px 12px; }
+        .profile-catch-card { background: #111; border: 1px solid #222; border-radius: 3px; padding: 6px 4px; text-align: center; position: relative; transition: border-color 0.15s; }
+        .profile-catch-card:hover { border-color: var(--red); }
+        .profile-catch-card img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; transition: transform 0.2s; }
+        .profile-catch-card:hover img { transform: scale(1.1); }
+        .profile-catch-name { font-size:8px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .profile-catch-val  { font-size:11px; color: #666; margin-top: 2px; }
+        .profile-catch-card .card-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--red); border-radius: 3px; padding: 7px 10px; font-size:12px; color: #ccc; white-space: nowrap; z-index: 100; pointer-events: none; }
+        .profile-catch-card:hover .card-tooltip { display: block; }
+
+        /* Rarity bars (profile) */
+        .profile-graph-section { padding: 12px 14px; border-top: 1px solid #2a0000; }
+
+        /* Achievements */
+        .profile-achievements { padding: 10px 14px 14px; border-top: 1px solid #2a0000; }
+        .profile-achievements-title { font-size:11px; color: #555; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+        .achievement { background: #111; border: 1px solid #2a2a2a; border-radius: 4px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; position: relative; transition: border-color 0.15s; }
+        .achievement.unlocked { border-color: #333; }
+        .achievement.locked   { opacity: 0.35; filter: grayscale(1); }
+        .achievement-icon  { font-size:27px; flex-shrink: 0; line-height: 1; }
+        .achievement-info  { flex: 1; min-width: 0; }
+        .achievement-name  { font-family:var(--pf); font-size:11px; color: #fff; letter-spacing: 0.3px; line-height: 1.5; }
+        .achievement.unlocked .achievement-name { color: #ffae00; }
+        .achievement-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--red); border-radius: 3px; padding: 6px 8px; font-family:var(--pf); font-size:11px; color: #aaa; white-space: nowrap; z-index: 10; pointer-events: none; }
+        .achievement:hover .achievement-tooltip { display: block; }
+        .achievement-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #222; border-radius: 0 0 4px 4px; overflow: hidden; }
+        .achievement-progress-fill { height: 100%; background: #cc0000; border-radius: 0 0 4px 4px; transition: width 0.6s ease; }
+        .achievement.unlocked .achievement-progress-fill { background: #ffae00; }
+        .profile-graph-title { font-size:11px; color: #555; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .rarity-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .rarity-bar-label { font-size:9px; width: 70px; min-width: 70px; letter-spacing: 0.5px; }
+        .rarity-bar-track { flex: 1; height: 10px; background: #111; border-radius: 2px; overflow: hidden; border: 1px solid #222; }
+        .rarity-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+        .rarity-bar-info { font-size:9px; color: #555; min-width: 70px; text-align: right; white-space: nowrap; }
+
+        /* Pokemon modal */
+        .poke-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 2000; align-items: center; justify-content: center; padding: 16px; }
+        .poke-modal-overlay.open { display: flex; }
+        .poke-modal { background: #1a0000; border: 3px solid var(--red); border-radius: 10px; width: 100%; max-width: 420px; overflow: hidden; }
+        .poke-modal-header { background: var(--red); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--red-dark); }
+        .poke-modal-header span { font-size:14px; color: #fff; text-shadow: 2px 2px 0 var(--red-dark); }
+        .poke-modal-close { font-family:var(--pf); font-size:11px; background: var(--red-dark); color: #fff; border: none; padding: 5px 8px; cursor: pointer; border-radius: 2px; }
+        .poke-modal-body { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 20px; }
+        .poke-modal-sprite { width: 210px; height: 210px; min-width: 210px; background: #111; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #2a2a2a; }
+        .poke-modal-sprite img { width: 190px; height: 190px; object-fit: contain; image-rendering: pixelated; }
+        .modal-loader { width: 40px; height: 40px; border: 3px solid #2a2a2a; border-top-color: var(--red); border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .poke-modal-info { width: 100%; }
+        .poke-modal-name { font-size:17px; margin-bottom: 10px; letter-spacing: 0.5px; text-align: center; }
+        .poke-modal-desc { font-family: 'Segoe UI', sans-serif; font-size:23px; color: #aaa; line-height: 1.7; margin-bottom: 14px; font-style: italic; text-align: center; }
+        .poke-modal-stats { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .poke-modal-stat { background: #111; border: 1px solid #2a2a2a; border-radius: 3px; padding: 6px 12px; text-align: center; }
+        .poke-modal-stat-label { font-size:9px; color: #555; margin-bottom: 4px; letter-spacing: 0.5px; }
+        .poke-modal-stat-value { font-size:14px; }
+        .poke-modal-footer { background: #111; border-top: 1px solid #2a0000; padding: 8px 14px; font-size:9px; color: #444; text-align: center; letter-spacing: 0.5px; }
+
+        /* Bouton Twitch auth */
+        .btn-twitch { font-family:var(--pf); font-size:9px; padding: 6px 10px; background: #9146ff; color: #fff; border: 2px solid #7c2fff; cursor: pointer; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap; transition: opacity 0.15s; }
+        .btn-twitch:hover { opacity: 0.85; }
+        .btn-connected { font-family:var(--pf); font-size:9px; padding: 6px 10px; background: #1fdf64; color: #000; border: 2px solid #18b050; cursor: pointer; border-radius: 3px; letter-spacing: 0.5px; white-space: nowrap; transition: opacity 0.15s; }
+        .btn-connected:hover { opacity: 0.85; }
+
+        /* ─── ÉCHANGES ──────────────────────────────────────────────────────── */
+        .btn-propose { font-family:var(--pf); font-size:8px; padding:4px 7px; background:#1a3a2a; color:#1fdf64; border:1px solid #1fdf64; cursor:pointer; border-radius:2px; transition:all 0.15s; white-space:nowrap; margin-top:4px; }
+        .btn-radin { font-family:var(--pf); font-size:8px; padding:4px 7px; background:#2a0000; color:#cc0000; border:1px solid #cc0000; border-radius:2px; white-space:nowrap; margin-top:4px; cursor:not-allowed; opacity:0.7; }
+        .btn-toggle-trade { font-family:var(--pf); font-size:9px; padding:6px 10px; border:none; cursor:pointer; border-radius:3px; transition:all 0.15s; letter-spacing:0.5px; }
+        .btn-toggle-trade.open   { background:#1a3a2a; color:#1fdf64; border:1px solid #1fdf64; }
+        .btn-toggle-trade.open:hover   { background:#1fdf64; color:#000; }
+        .btn-toggle-trade.closed { background:#2a0000; color:#cc0000; border:1px solid #cc0000; }
+        .btn-toggle-trade.closed:hover { background:#cc0000; color:#fff; }
+        .btn-propose:hover { background:#1fdf64; color:#000; }
+        .trade-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:3000; align-items:center; justify-content:center; padding:16px; }
+        .trade-overlay.open { display:flex; }
+        .trade-box { background:#1a0000; border:3px solid #1fdf64; border-radius:10px; width:100%; max-width:600px; max-height:90vh; overflow-y:auto; }
+        .trade-header { background:#1fdf64; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
+        .trade-header span { font-size:12px; color:#000; letter-spacing:0.5px; }
+        .trade-close { font-family:var(--pf); font-size:11px; background:#18b050; color:#000; border:none; padding:5px 8px; cursor:pointer; border-radius:2px; }
+        .trade-section { padding:12px 14px; border-bottom:1px solid #1a2a1a; }
+        .trade-label { font-size:9px; color:#555; letter-spacing:0.5px; margin-bottom:10px; }
+        .trade-search-wrap { padding:8px 14px 0; }
+        .trade-search-input { width:100%; font-family:var(--pf); font-size:9px; padding:7px 10px; background:#111; color:#fff; border:2px solid #333; border-radius:3px; outline:none; letter-spacing:0.5px; transition:border-color 0.15s; }
+        .trade-search-input:focus { border-color:#1fdf64; }
+        .trade-search-input::placeholder { color:#333; }
+        .trade-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:6px; max-height:200px; overflow-y:auto; }
+        .trade-card { background:#111; border:2px solid #222; border-radius:3px; padding:6px 4px; text-align:center; cursor:pointer; transition:all 0.15s; position:relative; }
+        .trade-card:hover { border-color:#1fdf64; }
+        .trade-card.selected { border-color:#1fdf64; background:#0a2a0a; }
+        .trade-card img { width:44px; height:44px; object-fit:contain; image-rendering:pixelated; }
+        .trade-card-name { font-size:8px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .trade-card-val { font-size:8px; color:#555; }
+        .trade-card-badge { position:absolute; top:3px; left:3px; font-size:8px; background:#222; color:#aaa; padding:2px 4px; border-radius:2px; }
+        .trade-preview { display:flex; align-items:center; justify-content:center; gap:20px; padding:14px; }
+        .trade-preview-side { text-align:center; }
+        .trade-preview-img { width:64px; height:64px; object-fit:contain; image-rendering:pixelated; background:#111; border-radius:4px; border:1px solid #222; }
+        .trade-preview-name { font-size:9px; margin-top:4px; }
+        .trade-arrow { font-size:30px; color:#1fdf64; }
+        .trade-confirm-btn { display:block; width:calc(100% - 28px); margin:0 14px 14px; font-family:var(--pf); font-size:11px; padding:10px; background:#1fdf64; color:#000; border:none; cursor:pointer; border-radius:3px; letter-spacing:0.5px; transition:opacity 0.15s; }
+        .trade-confirm-btn:hover { opacity:0.85; }
+        .trade-confirm-btn:disabled { opacity:0.3; cursor:default; }
+        .trade-tab-section { padding:12px 14px; grid-column: 1 / -1; }
+        .trade-tab-title { font-size:11px; color:#555; letter-spacing:0.5px; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid #222; }
+        .trade-item { background:#111; border:1px solid #222; border-radius:4px; padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; gap:10px; flex-wrap:nowrap; overflow:hidden; }
+        .trade-item-sprites { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+        .trade-item-sprite { width:40px; height:40px; object-fit:contain; image-rendering:pixelated; }
+        .trade-item-arrow { font-size:18px; color:#555; }
+        .trade-item-info { flex:1; min-width:0; overflow:hidden; }
+        .trade-item-names { font-size:9px; color:#aaa; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .trade-item-meta { font-size:8px; color:#444; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .trade-item-actions { display:flex; gap:6px; flex-shrink:0; }
+        .btn-accept { font-family:var(--pf); font-size:9px; padding:5px 8px; background:#1fdf64; color:#000; border:none; cursor:pointer; border-radius:2px; }
+        .btn-refuse { font-family:var(--pf); font-size:9px; padding:5px 8px; background:#333; color:#ff4444; border:1px solid #ff4444; cursor:pointer; border-radius:2px; }
+        .btn-cancel { font-family:var(--pf); font-size:9px; padding:5px 8px; background:#333; color:#888; border:1px solid #444; cursor:pointer; border-radius:2px; }
+        .trade-empty { font-size:9px; color:#333; text-align:center; padding:20px; letter-spacing:0.5px; }
+        .trade-history-item { background:#111; border:1px solid #1a1a1a; border-radius:4px; padding:10px 12px; margin-bottom:6px; display:flex; align-items:center; gap:10px; opacity:0.8; }
+        .trade-history-item.accepted  { border-left:3px solid #1fdf64; }
+        .trade-history-item.refused   { border-left:3px solid #ff4444; }
+        .trade-history-item.cancelled { border-left:3px solid #444; }
+        .trade-history-status { font-size:8px; padding:3px 6px; border-radius:2px; flex-shrink:0; white-space:nowrap; }
+        .status-accepted  { background:#0a2a0a; color:#1fdf64; }
+        .status-refused   { background:#2a0a0a; color:#ff4444; }
+        .status-cancelled { background:#1a1a1a; color:#555; }
+        .hist-nav { display:flex; align-items:center; justify-content:center; gap:12px; padding:10px 0 4px; }
+
+        /* Sous-menu échanges */
+        .trade-submenu-row { display:flex; background:#0d0d0d; border-bottom:1px solid var(--red); }
+        @keyframes trade-blink { 0%,100%{ background:transparent; color:#555; } 50%{ background:#880000; color:#fff; } }
+        .tab-btn.trade-pending { animation: trade-blink 1.2s step-start infinite; }
+        .trade-sub-btn { flex:1; text-align:center; padding:7px 4px; font-family:var(--pf); font-size:9px; color:#555; cursor:pointer; letter-spacing:0.5px; border:none; border-right:1px solid #1a1a1a; background:transparent; transition:background 0.15s, color 0.15s; }
+        .trade-sub-btn:last-child { border-right:none; }
+        .trade-sub-btn:hover { color:#aaa; background:#1a0000; }
+        .trade-sub-btn.active { background:var(--red-dark); color:#fff; }
+
+        /* Échanges publics */
+        .pub-filters { display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:10px 14px; background:#0d0d0d; border-bottom:1px solid #2a0000; border-top:1px solid #2a0000; }
+        .pub-filter-input { font-family:var(--pf); font-size:9px; padding:6px 9px; background:#111; color:#fff; border:1px solid #333; border-radius:2px; outline:none; width:130px; }
+        .pub-filter-input:focus { border-color:var(--red); }
+        .pub-filter-input::placeholder { color:#333; }
+        .pub-rarity-btn { font-family:var(--pf); font-size:8px; padding:5px 8px; background:#111; color:#555; border:1px solid #333; cursor:pointer; border-radius:2px; transition:all 0.15s; }
+        .pub-rarity-btn:hover { color:#aaa; border-color:#555; }
+        .pub-rarity-btn.active { color:#fff; }
+        .pub-rarity-btn.r-Junk      { border-color:#888; color:#888; }
+        .pub-rarity-btn.r-Junk.active      { background:#888; color:#000; }
+        .pub-rarity-btn.r-Common    { border-color:#ddd; color:#ddd; }
+        .pub-rarity-btn.r-Common.active    { background:#ddd; color:#000; }
+        .pub-rarity-btn.r-Uncommon  { border-color:#1fdf64; color:#1fdf64; }
+        .pub-rarity-btn.r-Uncommon.active  { background:#1fdf64; color:#000; }
+        .pub-rarity-btn.r-Rare      { border-color:#00d2ff; color:#00d2ff; }
+        .pub-rarity-btn.r-Rare.active      { background:#00d2ff; color:#000; }
+        .pub-rarity-btn.r-Epic      { border-color:#cc66ff; color:#cc66ff; }
+        .pub-rarity-btn.r-Epic.active      { background:#cc66ff; color:#000; }
+        .pub-rarity-btn.r-Legendary { border-color:#ffae00; color:#ffae00; }
+        .pub-rarity-btn.r-Legendary.active { background:#ffae00; color:#000; }
+        .pub-count { font-family:var(--pf); font-size:8px; color:#444; margin-left:auto; white-space:nowrap; }
+        .pub-status-btn { font-family:var(--pf); font-size:8px; padding:5px 8px; background:#111; color:#555; border:1px solid #333; cursor:pointer; border-radius:2px; transition:all 0.15s; }
+        .pub-status-btn:hover { color:#aaa; border-color:#555; }
+        .pub-status-btn.s-all.active     { background:#333; color:#fff; border-color:#fff; }
+        .pub-status-btn.s-pending.active { background:#1a1a00; color:#ffae00; border-color:#ffae00; }
+        .pub-status-btn.s-accepted.active{ background:#0a2a0a; color:#1fdf64; border-color:#1fdf64; }
+
+        .pub-trade-item { background:#111; border:1px solid #222; border-radius:4px; padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; gap:10px; flex-wrap:nowrap; overflow:hidden; transition:border-color 0.15s; }
+        .pub-trade-item:hover { border-color:#333; }
+        .pub-trade-sprites { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+        .pub-trade-sprite { width:44px; height:44px; object-fit:contain; image-rendering:pixelated; }
+        .pub-trade-arrow { font-size:21px; color:#555; }
+        .pub-trade-info { flex:1; min-width:0; overflow:hidden; }
+        .pub-trade-names { font-size:9px; color:#aaa; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .pub-trade-meta  { font-size:8px; color:#444; white-space:nowrap; }
+        .pub-trade-values { display:flex; flex-direction:column; gap:3px; flex-shrink:0; text-align:right; }
+        .pub-trade-val { font-size:8px; color:#ffae00; }
+        .pub-trade-rarity { font-size:8px; padding:2px 5px; border-radius:2px; }
+        .pub-propose-btn { font-family:var(--pf); font-size:8px; padding:5px 7px; background:#1a3a2a; color:#1fdf64; border:1px solid #1fdf64; cursor:pointer; border-radius:2px; transition:all 0.15s; flex-shrink:0; white-space:nowrap; }
+        .pub-propose-btn:hover { background:#1fdf64; color:#000; }
+        .copy-picker-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:4000; align-items:center; justify-content:center; padding:16px; }
+        .copy-picker-overlay.open { display:flex; }
+        .copy-picker-box { background:#1a0000; border:3px solid #1fdf64; border-radius:10px; width:100%; max-width:400px; overflow:hidden; }
+        .copy-picker-header { background:#1fdf64; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
+        .copy-picker-header span { font-size:12px; color:#000; letter-spacing:0.5px; }
+        .copy-picker-close { font-family:var(--pf); font-size:11px; background:#18b050; color:#000; border:none; padding:5px 8px; cursor:pointer; border-radius:2px; }
+        .copy-picker-list { padding:12px; display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto; }
+        .copy-picker-item { background:#111; border:2px solid #222; border-radius:4px; padding:10px 12px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:border-color 0.15s; }
+        .copy-picker-item:hover { border-color:#1fdf64; background:#0a2a0a; }
+        .copy-picker-item img { width:40px; height:40px; object-fit:contain; image-rendering:pixelated; flex-shrink:0; }
+        .copy-picker-item-info { flex:1; min-width:0; }
+        .copy-picker-item-name { font-size:11px; margin-bottom:4px; }
+        .copy-picker-item-date { font-size:8px; color:#555; margin-bottom:2px; }
+        .copy-picker-item-val { font-size:9px; color:#ffae00; }
+        .copy-picker-item-num { font-size:9px; color:#1fdf64; flex-shrink:0; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: var(--red-dark); border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <div class="topbar">
+        <span class="topbar-title">PIKACH-DEX  v2.0</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div id="authBtn">
+                <button class="btn-twitch" onclick="loginTwitch()">&#9656; TWITCH</button>
+            </div>
+            <div class="pokeballs">
+                <div class="pokeball"></div>
+                <div class="pokeball"></div>
+                <div class="pokeball"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs-row">
+        <button id="btn-inv"   class="tab-btn active" onclick="switchTab('inv')">MON INVENTAIRE</button>
+        <button id="btn-dex"   class="tab-btn" onclick="switchTab('dex')">POKÉDEX NATIONAL</button>
+        <button id="btn-lb"    class="tab-btn" onclick="switchTab('lb')">LEADERBOARD</button>
+        <button id="btn-trade" class="tab-btn" onclick="switchTab('trade')">&#8652; ÉCHANGES</button>
+        <button id="btn-achiev" class="tab-btn" onclick="switchTab('achiev')">&#9733; SUCC&Egrave;S</button>
+    </div>
+
+    <div id="tradeSubMenu" style="display:none;" class="trade-submenu-row">
+        <button id="btn-trade-mine"   class="trade-sub-btn" onclick="renderTradeTab('mine')">&#9679; MES ÉCHANGES</button>
+        <button id="btn-trade-public" class="trade-sub-btn active" onclick="renderTradeTab('public')">&#127760; MARCHÉ PUBLIC</button>
+    </div>
+
+    <div class="search-row">
+        <button class="btn-all" onclick="fetchAll()">ALL</button>
+        <button class="btn-all" id="btnMe" onclick="fetchMe()" style="display:none">MOI &#9658;</button>
+        <div class="search-autocomplete-wrap">
+            <input class="search-input" type="text" id="usernameInput" placeholder="PSEUDO TWITCH..."
+                   oninput="onMainSearch()"
+                   onkeydown="onMainSearchKey(event)"
+                   onkeypress="if(event.key==='Enter'){closeMainAutocomplete();fetchAllData();}"
+                   autocomplete="off"
+                   style="width:100%">
+            <div class="lb-autocomplete-list" id="mainAutocompleteList" style="display:none"></div>
+        </div>
+        <button class="btn-search" onclick="fetchAllData()">ANALYSER &#9658;</button>
+    </div>
+
+    <div id="invControls" class="inv-controls">
+        <button class="pill pill-doublon" id="pillDoublon"
+                onclick="toggleDoublon()" style="cursor:pointer;border:none;font-family:var(--pf)">DOUBLONS</button>
+        <input class="filter-input" type="text" id="filterInput" placeholder="FILTRER PAR NOM..." oninput="renderDisplay()">
+        <select class="sort-select" id="sortSelect" onchange="renderDisplay()">
+            <option value="date-desc">DATE &#9660;</option>
+            <option value="date-asc">DATE &#9650;</option>
+            <option value="rarity-desc">RARETE &#9660;</option>
+            <option value="rarity-asc">RARETE &#9650;</option>
+            <option value="value-desc">VALEUR &#9660;</option>
+            <option value="value-asc">VALEUR &#9650;</option>
+        </select>
+        <select class="sort-select" id="pageSizeSelect" onchange="onPageSizeChange()">
+            <option value="16">PETIT</option>
+            <option value="40" selected>MOYEN</option>
+            <option value="80">GRAND</option>
+            <option value="160">TRÈS GRAND</option>
+            <option value="99999">TOUT</option>
+        </select>
+        <span id="totalValue" class="total-value"></span>
+    </div>
+
+    <div id="genBar" class="gen-bar"></div>
+
+    <div id="minimalStats" class="stats-bar" style="display:none;">
+        <span id="uniqueProgress" class="stat-dex"></span>
+        <div id="rarityLine" class="rarity-pills"></div>
+    </div>
+
+    <div id="status">EN ATTENTE DE CONNEXION...</div>
+
+    <div id="lbControls" class="lb-controls">
+        <div class="lb-autocomplete-wrap">
+            <input class="lb-search" type="text" id="lbSearchInput" placeholder="CHERCHER..."
+                   oninput="onLbSearch()"
+                   onkeydown="onLbSearchKey(event)"
+                   autocomplete="off">
+            <div class="lb-autocomplete-list" id="lbAutocompleteList" style="display:none"></div>
+        </div>
+        <button class="lb-sort-btn active" onclick="sortLB('totalValue')"    id="lb-btn-value">₽ VALEUR</button>
+        <button class="lb-sort-btn"        onclick="sortLB('avgValue')"      id="lb-btn-avg">&#8960; MOY. VALEUR</button>
+        <button class="lb-sort-btn"        onclick="sortLB('totalCaptures')" id="lb-btn-captures">&#9670; CAPTURES</button>
+        <button class="lb-sort-btn"        onclick="sortLB('uniqueCount')"   id="lb-btn-unique">&#9670; UNIQUES</button>
+        <button class="lb-sort-btn"        onclick="sortLB('bestCatch')"     id="lb-btn-best">&#9733; MEILLEUR</button>
+        <button class="lb-sort-btn"        onclick="sortLB('crownCount')"    id="lb-btn-crown">👑 COURONNES</button>
+        <button class="lb-sort-btn"        onclick="sortLB('poopCount')"     id="lb-btn-poop">💩 CACAS</button>
+    </div>
+
+    <div class="inventory" id="mainContainer"></div>
+
+    <div class="pagination" id="pagination">
+        <button class="page-btn" id="pagePrev" onclick="changePage(-1)">&#9664; PREV</button>
+        <span class="page-info" id="pageInfo"></span>
+        <button class="page-btn" id="pageNext" onclick="changePage(1)">NEXT &#9654;</button>
+    </div>
+
+    <!-- Modale Pokémon -->
+    <div class="poke-modal-overlay" id="pokeModalOverlay" onclick="closePokeModal(event)">
+        <div class="poke-modal">
+            <div class="poke-modal-header">
+                <span id="pokeModalTitle">POKEMON</span>
+                <button class="poke-modal-close" onclick="closePokeModalBtn()">X</button>
+            </div>
+            <div class="poke-modal-body">
+                <div class="poke-modal-sprite"><img id="pokeModalImg" src="" alt=""></div>
+                <div class="poke-modal-info">
+                    <div class="poke-modal-name" id="pokeModalName"></div>
+                    <div class="poke-modal-desc" id="pokeModalDesc"></div>
+                    <div class="poke-modal-stats" id="pokeModalStats"></div>
+                </div>
+            </div>
+            <div class="poke-modal-footer" id="pokeModalFooter"></div>
+        </div>
+    </div>
+
+    <!-- Profil viewer -->
+    <div class="profile-overlay" id="profileOverlay" onclick="closeProfile(event)">
+        <div class="profile-box">
+            <div class="profile-header">
+                <span class="profile-title" id="profileTitle">PROFIL</span>
+                <button class="profile-close" onclick="closeProfileBtn()">X FERMER</button>
+            </div>
+            <div class="profile-stats"       id="profileStats"></div>
+            <div class="profile-best"        id="profileBest"></div>
+            <div class="profile-rarity-bar"  id="profileRarity"></div>
+            <div class="profile-catches-title">DERNIERES CAPTURES</div>
+            <div class="profile-catches-grid" id="profileCatches"></div>
+            <div class="profile-achievements">
+                <div class="profile-achievements-title">ACHIEVEMENTS</div>
+                <div class="achievements-grid" id="profileAchievements"></div>
+            </div>
+            <div class="profile-graph-section">
+                <div class="profile-graph-title">DISTRIBUTION DES RARETÉS</div>
+                <div id="rarityBars"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale proposition d'échange -->
+    <div class="trade-overlay" id="tradeOverlay" onclick="closeTradeModal(event)">
+        <div class="trade-box" id="tradeBox">
+            <div class="trade-header">
+                <span id="tradeTitle">PROPOSER UN ÉCHANGE</span>
+                <button class="trade-close" onclick="closeTradeModalBtn()">X</button>
+            </div>
+            <div class="trade-section">
+                <div class="trade-label">ILS OFFRENT :</div>
+                <div style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+                    <img id="tradeTheirSprite" src="" style="width:48px;height:48px;object-fit:contain;image-rendering:pixelated;background:#111;border-radius:4px;">
+                    <div>
+                        <div id="tradeTheirName" style="font-size:11px;margin-bottom:4px;"></div>
+                        <div id="tradeTheirVal" style="font-size:9px;color:#ffae00;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="trade-section">
+                <div class="trade-label">TU OFFRES (choisis) :</div>
+                <div class="trade-search-wrap">
+                    <input class="trade-search-input" type="text" id="tradeSearchInput"
+                           placeholder="RECHERCHER UN POKEMON..."
+                           oninput="filterTradeCards()">
+                </div>
+                <br>
+                <div class="trade-cards" id="tradeMyCards"></div>
+            </div>
+            <div class="trade-preview" id="tradePreview" style="display:none;">
+                <div class="trade-preview-side">
+                    <img id="tradePreviewMine" class="trade-preview-img" src="">
+                    <div id="tradePreviewMineName" class="trade-preview-name"></div>
+                </div>
+                <div class="trade-arrow">&#8652;</div>
+                <div class="trade-preview-side">
+                    <img id="tradePreviewTheirs" class="trade-preview-img" src="">
+                    <div id="tradePreviewTheirsName" class="trade-preview-name"></div>
+                </div>
+            </div>
+            <button class="trade-confirm-btn" id="tradeConfirmBtn" onclick="confirmTrade()" disabled>PROPOSER L'ÉCHANGE &#9658;</button>
+        </div>
+    </div>
+
+    <!-- Copy Picker -->
+    <div class="copy-picker-overlay" id="copyPickerOverlay" onclick="if(event.target===this)closeCopyPicker()">
+        <div class="copy-picker-box">
+            <div class="copy-picker-header">
+                <span id="copyPickerTitle">CHOISIR L'EXEMPLAIRE</span>
+                <button class="copy-picker-close" onclick="closeCopyPicker()">X</button>
+            </div>
+            <div class="copy-picker-list" id="copyPickerList"></div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <div class="bottombar">
+        <span>&#127907; TWITCH FISHING EXPLORER</span>
+        <span>SELECT &#9658; A &#9658; B</span>
+    </div>
+
+</div>
+<script>
+    const API      = 'https://pokedex-server-1-qslf.onrender.com';
+
+    // ── Toast notifications (remplace les alert() bloquants) ─────────────────
+    function showToast(msg, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    }
+    // ── GitHub Pages ──────────────────────────────────────────────────────────
+    const CDN_GIF     = 'https://pikach44.github.io/pikach-sprites-gif';
+    const CDN_PNG     = 'https://pikach44.github.io/pikach-sprites-png';
+    const DEFAULT_IMG = `${CDN_PNG}/default.png`;
+
+    function cldUrl(file) {
+        const fileName = file.split('/').pop();
+        const enc      = encodeURIComponent(fileName);
+        const isPng    = fileName.toLowerCase().endsWith('.png');
+        return isPng ? `${CDN_PNG}/${enc}` : `${CDN_GIF}/${enc}`;
+    }
+
+    let currentUser = null;
+
+    // ─── AUTH TWITCH ───────────────────────────────────────────────────────────
+    function loginTwitch() { window.location.href = `${API}/auth/twitch`; }
+
+    function logoutTwitch() {
+        localStorage.removeItem('jwt');
+        currentUser = null;
+        updateAuthUI();
+    }
+
+    function updateAuthUI() {
+        const btn      = document.getElementById('authBtn');
+        const tradeTab = document.getElementById('btn-trade');
+        const btnMe    = document.getElementById('btnMe');
+        if (currentUser) {
+            btn.innerHTML = `<button class="btn-connected" onclick="logoutTwitch()">&#9679; ${currentUser.displayName}</button>`;
+            document.getElementById('usernameInput').value = currentUser.username;
+            if (btnMe) btnMe.style.display = '';
+        } else {
+            btn.innerHTML = `<button class="btn-twitch" onclick="loginTwitch()">&#9656; TWITCH</button>`;
+            if (btnMe) btnMe.style.display = 'none';
+        }
+    }
+
+    async function initAuth() {
+        // Le token est maintenant stocké directement par la page intermédiaire du serveur
+        // Plus besoin de le lire depuis l'URL
+        const saved = localStorage.getItem('jwt');
+        if (saved) {
+            try {
+                const res = await fetch(`${API}/auth/me`, { headers: { 'Authorization': `Bearer ${saved}` } });
+                if (res.ok) {
+                    currentUser = await res.json();
+                    updateAuthUI();
+                    // Charger ses propres captures pour la pokeball
+                    fetch(`${API}/catches/${currentUser.username}`)
+                        .then(r => r.json())
+                        .then(d => { myCatches = d.catches || []; })
+                        .catch(() => {});
+                    fetchAllData();
+                    checkPendingTrades();
+                    if (pendingTradesInterval) clearInterval(pendingTradesInterval);
+                    pendingTradesInterval = setInterval(checkPendingTrades, 30000);
+                } else {
+                    localStorage.removeItem('jwt');
+                    updateAuthUI();
+                }
+            } catch { updateAuthUI(); }
+        }
+    }
+
+    let currentTab      = 'inv';
+    let allPokemon      = [];
+    let userCatches     = [];
+    let myCatches       = []; // captures du joueur connecté, toujours à jour
+    let currentGen      = 1;
+    let leaderboardData = [];
+    let lbSortKey       = 'totalValue';
+    let isAllMode       = false;
+    let activeRarity    = null;
+    let activeDoublon   = false;
+    let currentPage     = 0;
+    let PAGE_SIZE       = parseInt(localStorage.getItem('pageSize') || '40');
+    let pendingTradesInterval = null;
+    let globalBestValuePerName  = {}; // meilleure valeur par pokemon toutes personnes confondues
+    let globalWorstValuePerName = {}; // pire valeur par pokemon toutes personnes confondues
+
+    const BORNES = ["Mew Shiny","Celebi","Deoxys Vitesse","Arceus Ténèbres","Genesect","Volcanion","Zeraora","Sylveroy"];
+    const RARITY_ORDER  = { Junk:0, Common:1, Uncommon:2, Rare:3, Epic:4, Legendary:5 };
+    const RARITY_COLORS = { Junk:'#888888', Common:'#dddddd', Uncommon:'#1fdf64', Rare:'#00d2ff', Epic:'#cc66ff', Legendary:'#ffae00' };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('pageSizeSelect');
+        if (sel) sel.value = PAGE_SIZE;
+    });
+
+    // ─── RARETÉ ────────────────────────────────────────────────────────────────
+    function getRarity(p) {
+        if (p.catchRarity) return p.catchRarity;
+        const found = allPokemon.find(pk => pk.name.toLowerCase() === (p.catchName || p.name || '').toLowerCase());
+        const val = found ? (found.BaseValue || 0) : 0;
+        if      (val >= 501) return 'Legendary';
+        else if (val >= 200) return 'Epic';
+        else if (val >= 60)  return 'Rare';
+        else if (val >= 35)  return 'Uncommon';
+        else if (val >= 15)  return 'Common';
+        else                 return 'Junk';
+    }
+
+    // ─── FETCH ─────────────────────────────────────────────────────────────────
+    async function fetchAll() {
+        isAllMode = true; currentPage = 0;
+        setStatus("CHARGEMENT DE TOUTES LES CAPTURES...");
+        try {
+            await ensurePokemonLoaded();
+            const data = await (await fetch(`${API}/catches-all`)).json();
+            userCatches = data.catches || [];
+            updateStats(data);
+            renderDisplay();
+        } catch { setStatus("ERREUR SERVEUR."); }
+    }
+
+    async function fetchMe() {
+        document.getElementById('usernameInput').value = currentUser.username;
+        await fetchAllData();
+    }
+
+    async function fetchAllData() {
+        const username = document.getElementById('usernameInput').value.trim();
+        if (!username) return;
+        isAllMode = false; currentPage = 0;
+        setStatus(`RECHERCHE DE ${username.toUpperCase()}...`);
+        try {
+            await ensurePokemonLoaded();
+            const data = await (await fetch(`${API}/catches/${username}`)).json();
+            userCatches = data.catches || [];
+            updateStats(data);
+            renderDisplay();
+        } catch { setStatus("ERREUR SERVEUR."); }
+    }
+
+    async function ensurePokemonLoaded() {
+        if (allPokemon.length === 0)
+            allPokemon = await (await fetch(`${API}/all-pokemon`)).json();
+    }
+
+    // ─── TABS ──────────────────────────────────────────────────────────────────
+    function switchTab(type) {
+        currentTab = type; activeRarity = null; activeDoublon = false;
+        closeMainAutocomplete();
+        const lbList = document.getElementById('lbAutocompleteList');
+        if (lbList) { lbList.style.display = 'none'; lbAutoIndex = -1; }
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        const btnMap = { inv:'btn-inv', dex:'btn-dex', lb:'btn-lb', trade:'btn-trade', achiev:'btn-achiev' };
+        document.getElementById(btnMap[type]).classList.add('active');
+        document.getElementById('genBar').style.display       = type === 'dex'   ? 'flex' : 'none';
+        if (type === 'achiev') {
+            document.getElementById('invControls').style.display = 'none';
+            document.getElementById('pagination').classList.remove('visible');
+            document.getElementById('minimalStats').style.display = 'none';
+            document.querySelector('.search-row').style.display = 'none';
+            document.getElementById('genBar').style.display = 'none';
+            document.getElementById('lbControls').style.display = 'none';
+            document.getElementById('tradeSubMenu').style.display = 'none';
+            document.getElementById('mainContainer').innerHTML = '';
+            renderAchievementsGlobal();
+            return;
+        }
+        document.getElementById('lbControls').style.display   = type === 'lb' ? 'flex' : 'none';
+        // Sous-menu échanges visible seulement si connecté + onglet trade
+        document.getElementById('tradeSubMenu').style.display = (type === 'trade' && currentUser) ? 'flex' : 'none';
+        document.querySelector('.search-row').style.display   = (type === 'lb' || type === 'trade') ? 'none' : 'flex';
+        document.getElementById('minimalStats').style.display = type === 'trade' ? 'none' : (type === 'lb' ? 'none' : document.getElementById('minimalStats').style.display);
+        // ✅ FIX : cacher invControls et pagination quand on quitte l'inventaire
+        if (type === 'lb' || type === 'trade' || type === 'dex' || type === 'achiev') {
+            document.getElementById('invControls').style.display = 'none';
+            document.getElementById('pagination').classList.remove('visible');
+            document.getElementById('mainContainer').innerHTML = '';
+        }
+        if (type === 'lb')         fetchLeaderboard();
+        else if (type === 'trade') {
+            document.getElementById('btn-trade').classList.remove('trade-pending');
+            renderTradeTab();
+        }
+        else                       renderDisplay();
+    }
+
+    // ─── RENDER ────────────────────────────────────────────────────────────────
+    function renderDisplay() {
+        const container   = document.getElementById('mainContainer');
+        container.innerHTML = '';
+        const invControls = document.getElementById('invControls');
+
+        if (currentTab === 'lb') {
+            invControls.style.display = 'none';
+            document.getElementById('pagination').classList.remove('visible');
+            return;
+        }
+
+        if (currentTab === 'inv') {
+            invControls.style.display = 'flex';
+            if (userCatches.length === 0) { setStatus("AUCUNE CAPTURE TROUVÉE."); return; }
+
+            const filter = document.getElementById('filterInput').value.trim().toLowerCase();
+            const sort   = document.getElementById('sortSelect').value;
+
+            if (filter !== (window._lastFilter||'') || sort !== (window._lastSort||'')) { currentPage = 0; }
+            window._lastFilter = filter; window._lastSort = sort;
+
+            // Calcule les doublons PAR personne
+            const nameCountsPerUser = {};
+            userCatches.forEach(c => {
+                const user = (c.userName||'').toLowerCase();
+                const name = (c.catchName||'').toLowerCase();
+                const key  = user + '|' + name;
+                nameCountsPerUser[key] = (nameCountsPerUser[key] || 0) + 1;
+            });
+
+
+            let filtered = userCatches.filter(p => {
+                const matchName    = !filter        || (p.catchName||'').toLowerCase().includes(filter);
+                const matchRarity  = !activeRarity  || getRarity(p) === activeRarity;
+                const key          = (p.userName||'').toLowerCase() + '|' + (p.catchName||'').toLowerCase();
+                const matchDoublon = !activeDoublon || nameCountsPerUser[key] > 1;
+                return matchName && matchRarity && matchDoublon;
+            });
+
+            filtered.sort((a, b) => {
+                switch(sort) {
+                    case 'date-desc':   return new Date(b.timestamp) - new Date(a.timestamp);
+                    case 'date-asc':    return new Date(a.timestamp) - new Date(b.timestamp);
+                    case 'rarity-desc': return (RARITY_ORDER[getRarity(b)]||0) - (RARITY_ORDER[getRarity(a)]||0);
+                    case 'rarity-asc':  return (RARITY_ORDER[getRarity(a)]||0) - (RARITY_ORDER[getRarity(b)]||0);
+                    case 'value-desc':  return (b.catchValue||0) - (a.catchValue||0);
+                    case 'value-asc':   return (a.catchValue||0) - (b.catchValue||0);
+                    default: return 0;
+                }
+            });
+
+            const total = filtered.reduce((s, p) => s + (p.catchValue||0), 0);
+            document.getElementById('totalValue').innerHTML = `TOTAL: ${total} &#128176;`;
+
+            const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+            if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
+            const paginated = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+            setStatus(`${filtered.length} / ${userCatches.length} CAPTURE(S).`);
+            paginated.forEach(p => {
+                const nameKey   = (p.catchName||'').toLowerCase();
+                const bestEntry = globalBestValuePerName[nameKey];
+                // Couronne si : cette carte est la meilleure valeur toutes personnes confondues
+                // ET qu'au moins un autre user possède aussi ce pokemon
+                // Couronne si :
+                // 1. Pokemon détenu par 2+ joueurs différents ET c'est la meilleure valeur globale
+                // 2. OU ce joueur a 2+ copies de ce pokemon ET c'est sa meilleure valeur
+                const isBestCard    = bestEntry && String(p._id) === bestEntry.id;
+                const isMultiOwned  = bestEntry && (bestEntry.ownerCount || 1) > 1;
+                // Doublon chez ce même joueur ?
+                const ownerName     = (p.userName||'').toLowerCase();
+                const ownerCopies   = userCatches.filter(c =>
+                    c.catchName.toLowerCase() === nameKey &&
+                    (c.userName||'').toLowerCase() === ownerName
+                );
+                const isOwnerDoublon = ownerCopies.length > 1;
+                const bestOwnerVal   = Math.max(...ownerCopies.map(c => c.catchValue || 0));
+                const isBestOfOwner  = isOwnerDoublon && (p.catchValue || 0) === bestOwnerVal;
+                p._isCrown = (isBestCard && isMultiOwned) || isBestOfOwner;
+
+                // Caca : pire valeur parmi plusieurs joueurs
+                const worstEntry    = globalWorstValuePerName[nameKey];
+                const isWorstCard   = worstEntry && String(p._id) === worstEntry.id;
+                const worstOwnerVal = ownerCopies.length > 0 ? Math.min(...ownerCopies.map(c => c.catchValue || 0)) : 0;
+                const isWorstOfOwner = isOwnerDoublon && (p.catchValue || 0) === worstOwnerVal;
+                p._isPoop = !p._isCrown && ((isWorstCard && isMultiOwned) || isWorstOfOwner);
+
+                container.appendChild(createCard(p, true));
+            });
+
+            const pag = document.getElementById('pagination');
+            if (filtered.length > PAGE_SIZE) {
+                pag.classList.add('visible');
+                document.getElementById('pageInfo').innerText = `${currentPage+1} / ${totalPages}`;
+                document.getElementById('pagePrev').disabled = currentPage === 0;
+                document.getElementById('pageNext').disabled = currentPage >= totalPages - 1;
+            } else {
+                pag.classList.remove('visible');
+            }
+
+        } else {
+            invControls.style.display = 'none';
+            document.getElementById('pagination').classList.remove('visible');
+            document.getElementById('filterInput').value = '';
+            setupGenBar();
+            const slice = getGenSlice(currentGen);
+            const owned = slice.filter(p => userCatches.some(c => c.catchName.toLowerCase() === p.name.toLowerCase()));
+            setStatus(`${owned.length} POKÉMON SUR ${slice.length} DÉCOUVERTS.`);
+            slice.forEach(p => {
+                const isOwned = userCatches.some(c => c.catchName.toLowerCase() === p.name.toLowerCase());
+                container.appendChild(createCard(p, isOwned));
+            });
+        }
+    }
+
+    // ─── CREATE CARD ───────────────────────────────────────────────────────────
+    function createCard(p, isOwned) {
+        const card     = document.createElement('div');
+        const realName = p.catchName || p.name;
+        const rarity   = getRarity(p);
+        card.className = `card ${!isOwned ? 'not-owned' : ''}`;
+        card.style.cursor = 'pointer';
+        if (isOwned) card.onclick = () => openPokeModal(realName, rarity, p);
+
+        const catchCount = isOwned ? userCatches.filter(c => c.catchName.toLowerCase() === realName.toLowerCase()).length : 0;
+        // Pokeball : visible quand on regarde un autre joueur ou le pokédex
+        // et qu'on possède déjà ce Pokémon (check par nom uniquement)
+        const isMine     = isOwned && p.userName && currentUser && p.userName.toLowerCase() === currentUser.username.toLowerCase();
+        const viewedUser = document.getElementById('usernameInput')?.value?.trim().toLowerCase();
+        const isViewingOther = currentUser && viewedUser && viewedUser !== currentUser.username.toLowerCase();
+        // ✅ FIX : utilise myCatches (mes propres captures) et pas userCatches
+        // qui peut contenir les captures d'un autre joueur quand on filtre
+        const alreadyOwn = currentUser && !isMine && (isAllMode || isViewingOther || currentTab === 'dex') &&
+                           myCatches.some(c => c.catchName.toLowerCase() === realName.toLowerCase());
+
+        let allCaptures = isOwned ? userCatches.filter(c => c.catchName.toLowerCase() === realName.toLowerCase()) : [];
+        let tooltipHtml = '';
+        if (isOwned && allCaptures.length > 0) {
+            const lines = allCaptures.map(c => {
+                const d = new Date(c.timestamp);
+                return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+            }).join('<br>');
+            const label = allCaptures.length > 1 ? `${allCaptures.length}x &#128197;<br>` : '';
+            tooltipHtml = `<div class="card-tooltip">${label}${lines}</div>`;
+        }
+
+        let fileName = p.sprite || p.SpritePath || p.catchSprite || p.spritePath;
+        if (!fileName || fileName === 'default.png') fileName = `${realName}.gif`;
+        let spriteUrl;
+        if (fileName.includes('PKmon/') || fileName.startsWith('v1')) {
+            spriteUrl = `${CDN_GIF}/${fileName}`;
+        } else {
+            spriteUrl = cldUrl(fileName);
+        }
+
+        card.innerHTML = `
+            ${tooltipHtml}
+            ${catchCount > 1 ? `<div class="badge-count">x${catchCount}</div>` : ''}
+            ${alreadyOwn ? '<div class="badge-owned" title="Tu possèdes ce Pokémon"></div>' : ''}
+            <div class="corner-dot dot-${rarity}"></div>
+            <div class="sprite-container">
+                <img src="${spriteUrl}" loading="lazy"
+                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+            </div>
+            <div class="card-name rarity-${rarity}">${isOwned ? realName : '???'}</div>
+            ${(isOwned && p.catchValue) ? `<div class="card-val">${p._isCrown ? '<span style="position:relative;top:-2px">👑</span> ' : p._isPoop ? '<span style="position:relative;top:-2px">💩</span> ' : ''}${p.catchValue}<span class="card-currency">₽</span></div>` : ''}
+        `;
+
+        if (isOwned && currentUser && p.userName &&
+            currentUser.username.toLowerCase() !== p.userName.toLowerCase()) {
+            const proposeBtn = document.createElement('button');
+            if (p.tradeRefused) {
+                proposeBtn.className = 'btn-radin';
+                proposeBtn.innerText = '🔒 RADIN';
+            } else {
+                proposeBtn.className = 'btn-propose';
+                proposeBtn.innerText = '⇄ ÉCHANGE';
+                proposeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openTradeModal(p._id, realName, p.sprite, p.catchValue, p.userName);
+                };
+            }
+            card.appendChild(proposeBtn);
+        }
+
+        return card;
+    }
+
+    // ─── GEN ───────────────────────────────────────────────────────────────────
+    function getGenSlice(gen) {
+        let start = gen > 1 ? allPokemon.findIndex(p => p.name === BORNES[gen-2]) + 1 : 0;
+        let end   = gen <= BORNES.length ? allPokemon.findIndex(p => p.name === BORNES[gen-1]) + 1 : allPokemon.length;
+        return allPokemon.slice(start, end);
+    }
+
+    function setupGenBar() {
+        const bar = document.getElementById('genBar');
+        bar.innerHTML = '';
+        for (let i = 1; i <= BORNES.length + 1; i++) {
+            const isBonus = i === BORNES.length + 1;
+            if (isBonus) {
+                const hasOwned = getGenSlice(i).some(p => userCatches.some(c => c.catchName.toLowerCase() === p.name.toLowerCase()));
+                if (!hasOwned) return;
+            }
+            const btn = document.createElement('button');
+            btn.className = `gen-btn ${i === currentGen ? 'active' : ''}`;
+            btn.innerText = isBonus ? 'BONUS' : `GEN ${i}`;
+            btn.onclick   = () => { currentGen = i; renderDisplay(); };
+            bar.appendChild(btn);
+        }
+    }
+
+    // ─── STATS ─────────────────────────────────────────────────────────────────
+    function filterByRarity(rarity) {
+        activeRarity = (activeRarity === rarity) ? null : rarity;
+        renderDisplay();
+        document.querySelectorAll('.pill[data-rarity]').forEach(p => {
+            p.style.opacity = (!activeRarity || p.dataset.rarity === activeRarity) ? '1' : '0.35';
+            p.style.outline = p.dataset.rarity === activeRarity ? '2px solid #fff' : 'none';
+        });
+    }
+
+    function updateStats(data) {
+        document.getElementById('minimalStats').style.display = 'flex';
+        document.getElementById('uniqueProgress').innerText = `POKÉDEX : ${data.uniqueCount||0} / 1029`;
+        const rl = document.getElementById('rarityLine');
+        // ✅ Ne PAS faire rl.innerHTML = '' — ça supprimerait le bouton DOUBLONS statique
+        activeRarity  = null;
+        activeDoublon = false;
+
+        if (data.rarityStats) {
+            // Vider uniquement les pills de rareté (pas le bouton doublon)
+            rl.querySelectorAll('.pill[data-rarity]').forEach(p => p.remove());
+            Object.entries(data.rarityStats).forEach(([rarity, count]) => {
+                const span = document.createElement('span');
+                span.className   = `pill pill-${rarity}`;
+                span.dataset.rarity = rarity;
+                span.style.cursor = 'pointer';
+                span.innerHTML = `${rarity.toUpperCase().slice(0,3)}. ${count}`;
+                span.onclick = () => filterByRarity(rarity);
+                rl.appendChild(span);
+            });
+        }
+        // Sync état visuel du bouton doublon
+        const pill = document.getElementById('pillDoublon');
+        if (pill) pill.classList.toggle('active', activeDoublon);
+    }
+
+    function toggleDoublon() {
+        activeDoublon = !activeDoublon;
+        const pill = document.getElementById('pillDoublon');
+        if (pill) pill.classList.toggle('active', activeDoublon);
+        // Désactiver le filtre rareté si on active doublon (et vice versa, optionnel)
+        currentPage = 0;
+        renderDisplay();
+    }
+
+    // ─── ACHIEVEMENTS GLOBAL VIEW ────────────────────────────────────────────────
+    let achievFilterCatches = null; // catches du user filtré (null = pas de filtre)
+    let achievUnlockMap     = {};   // { achievId: unlockedAt } — chargé depuis le serveur
+
+    function getAllAchievDefs() {
+        const defs = [
+            // ── CAPTURES ──────────────────────────────────────────────────────
+            { id:'first',   icon:'🎣', name:'PREMIER PAS',     desc:'Première capture',         cat:'CAPTURES' },
+            { id:'c10',     icon:'💼', name:'CHASSEUR',         desc:'10 captures',              cat:'CAPTURES' },
+            { id:'c100',    icon:'🏹', name:'DRESSEUR',         desc:'100 captures',             cat:'CAPTURES' },
+            { id:'c500',    icon:'⚔️', name:'VÉTÉRAN',          desc:'500 captures',             cat:'CAPTURES' },
+            { id:'c1000',   icon:'🏆', name:'LÉGENDE',          desc:'1000 captures',            cat:'CAPTURES' },
+            // ── POKÉDEX ───────────────────────────────────────────────────────
+            { id:'dex10',   icon:'📖', name:'CURIEUX',          desc:'Pokédex à 10%',            cat:'POKÉDEX'  },
+            { id:'dex25',   icon:'📚', name:'COLLECTIONNEUR',   desc:'Pokédex à 25%',            cat:'POKÉDEX'  },
+            { id:'dex50',   icon:'🗂️', name:'ENCYCLOPÉDIE',     desc:'Pokédex à 50%',            cat:'POKÉDEX'  },
+            { id:'dex100',  icon:'🌟', name:'MAÎTRE',           desc:'Pokédex à 100%',           cat:'POKÉDEX'  },
+            // ── RARETÉS (row = une ligne par rareté) ──────────────────────────
+            { id:'rare1',   icon:'💎', name:'RARE x1',          desc:'1 Rare capturé',           cat:'RARETÉS', row:'Rare'      },
+            { id:'rare10',  icon:'💎', name:'RARE x10',         desc:'10 Rares capturés',        cat:'RARETÉS', row:'Rare'      },
+            { id:'rare25',  icon:'💎', name:'RARE x25',         desc:'25 Rares capturés',        cat:'RARETÉS', row:'Rare'      },
+            { id:'rare50',  icon:'💎', name:'RARE x50',         desc:'50 Rares capturés',        cat:'RARETÉS', row:'Rare'      },
+            { id:'rare100', icon:'💎', name:'RARE x100',        desc:'100 Rares capturés',       cat:'RARETÉS', row:'Rare'      },
+            { id:'epic1',   icon:'🔮', name:'ÉPIQUE x1',        desc:'1 Épique capturé',         cat:'RARETÉS', row:'Épique'    },
+            { id:'epic5',   icon:'🔮', name:'ÉPIQUE x5',        desc:'5 Épiques capturés',       cat:'RARETÉS', row:'Épique'    },
+            { id:'epic10',  icon:'🔮', name:'ÉPIQUE x10',       desc:'10 Épiques capturés',      cat:'RARETÉS', row:'Épique'    },
+            { id:'epic15',  icon:'🔮', name:'ÉPIQUE x15',       desc:'15 Épiques capturés',      cat:'RARETÉS', row:'Épique'    },
+            { id:'epic20',  icon:'🔮', name:'ÉPIQUE x20',       desc:'20 Épiques capturés',      cat:'RARETÉS', row:'Épique'    },
+            { id:'epic50',  icon:'🔮', name:'ÉPIQUE x50',       desc:'50 Épiques capturés',      cat:'RARETÉS', row:'Épique'    },
+            { id:'leg1',    icon:'👑', name:'LÉGEND. x1',       desc:'1 Légendaire capturé',     cat:'RARETÉS', row:'Légendaire'},
+            { id:'leg5',    icon:'👑', name:'LÉGEND. x5',       desc:'5 Légendaires capturés',   cat:'RARETÉS', row:'Légendaire'},
+            { id:'leg10',   icon:'👑', name:'LÉGEND. x10',      desc:'10 Légendaires capturés',  cat:'RARETÉS', row:'Légendaire'},
+            { id:'leg20',   icon:'👑', name:'LÉGEND. x20',      desc:'20 Légendaires capturés',  cat:'RARETÉS', row:'Légendaire'},
+            { id:'leg50',   icon:'👑', name:'LÉGEND. x50',      desc:'50 Légendaires capturés',  cat:'RARETÉS', row:'Légendaire'},
+            { id:'leg100',  icon:'👑', name:'LÉGEND. x100',     desc:'100 Légendaires capturés', cat:'RARETÉS', row:'Légendaire'},
+            { id:'junk20',  icon:'🗑️', name:'JUNK x20',         desc:'20 Junk capturés',         cat:'RARETÉS', row:'Junk'      },
+            { id:'junk50',  icon:'🗑️', name:'JUNK x50',         desc:'50 Junk capturés',         cat:'RARETÉS', row:'Junk'      },
+            { id:'junk100', icon:'🗑️', name:'JUNK x100',        desc:'100 Junk capturés',        cat:'RARETÉS', row:'Junk'      },
+            // ── VALEUR ────────────────────────────────────────────────────────
+            { id:'val1k',   icon:'💰', name:'PETIT ÉPARGNANT',  desc:'Valeur totale 1000₽',      cat:'VALEUR'   },
+            { id:'val10k',  icon:'💵', name:'INVESTISSEUR',     desc:'Valeur totale 10000₽',     cat:'VALEUR'   },
+            { id:'val100k', icon:'🏦', name:'MILLIONNAIRE',     desc:'Valeur totale 100000₽',    cat:'VALEUR'   },
+            { id:'best500', icon:'💫', name:'GROS LOT',         desc:'1 pokemon > 500₽',         cat:'VALEUR'   },
+            { id:'val1000', icon:'💎', name:'VALEUR ULTIME',    desc:'Capturer un pokemon à 1000₽', cat:'VALEUR' },
+            // ── ÉCHANGES ─────────────────────────────────────────────────────
+            { id:'trade1',  icon:'🤝', name:'PREMIER ÉCHANGE',  desc:'1 échange accepté',        cat:'ÉCHANGES' },
+            { id:'trade10', icon:'🔄', name:'ÉCHANGEUR',        desc:'10 échanges acceptés',     cat:'ÉCHANGES' },
+            { id:'trade25', icon:'🕊️', name:'DIPLOMATE',        desc:'25 échanges acceptés',     cat:'ÉCHANGES' },
+            { id:'trade50', icon:'🌐', name:'AMBASSADEUR',      desc:'50 échanges acceptés',     cat:'ÉCHANGES' },
+            { id:'trade100',icon:'🌍', name:'NÉGOCIATEUR',      desc:'100 échanges acceptés',    cat:'ÉCHANGES' },
+            { id:'trade150',icon:'🌠', name:'COURTIER',         desc:'150 échanges acceptés',    cat:'ÉCHANGES' },
+            { id:'trade200',icon:'♾️', name:'GRAND MAÎTRE',     desc:'200 échanges acceptés',    cat:'ÉCHANGES' },
+            // ── SHINIES ───────────────────────────────────────────────────────
+            { id:'shiny1',  icon:'🌟', name:'PREMIER SHINY',    desc:'1er shiny capturé',        cat:'SHINY'    },
+            { id:'shiny5',  icon:'⭐', name:'5 SHINY',          desc:'5 shiny capturés',         cat:'SHINY'    },
+            { id:'shiny10', icon:'✨', name:'10 SHINY',         desc:'10 shiny capturés',        cat:'SHINY'    },
+            { id:'shiny20', icon:'💥', name:'20 SHINY',         desc:'20 shiny capturés',        cat:'SHINY'    },
+            { id:'shiny30', icon:'🌠', name:'30 SHINY',         desc:'30 shiny capturés',        cat:'SHINY'    },
+            { id:'shiny40', icon:'🌌', name:'40 SHINY',         desc:'40 shiny capturés',        cat:'SHINY'    },
+            { id:'shiny41', icon:'💫', name:'COMPLET SHINY',    desc:'Les 41 shiny (41/41)',      cat:'SHINY'    },
+            // ── FORMES SPÉCIALES ──────────────────────────────────────────────
+            { id:'mega1',   icon:'🔰', name:'MÉGA POWER',       desc:'1er Méga capturé',         cat:'FORMES'   },
+            { id:'mega5',   icon:'⚡', name:'5 MÉGAS',          desc:'5 Mégas capturés',         cat:'FORMES'   },
+            { id:'mega10',  icon:'🔥', name:'10 MÉGAS',         desc:'10 Mégas capturés',        cat:'FORMES'   },
+            { id:'mega15',  icon:'👑', name:'MAÎTRE MÉGA',      desc:'15 Mégas capturés',        cat:'FORMES'   },
+            { id:'gigas1',  icon:'🏔️', name:'GIGAMAX',          desc:'1er Gigamax capturé',      cat:'FORMES'   },
+            // ── POIDS ─────────────────────────────────────────────────────────
+            { id:'heavy1',  icon:'🏋️', name:'MASTODONTE',       desc:'Capturer un pokemon ≥ 999kg', cat:'POIDS' },
+            { id:'light1',  icon:'🪶', name:'POIDS PLUME',      desc:'Capturer un pokemon ≤ 0.1kg', cat:'POIDS' },
+            // ── COLLECTION ────────────────────────────────────────────────────
+            { id:'dup2',    icon:'👯', name:'DOUBLON',          desc:'2× le même Pokémon',       cat:'COLLECTION'},
+            { id:'dup5',    icon:'🎲', name:'QUINTUPLE',        desc:'5× le même Pokémon',       cat:'COLLECTION'},
+            // ── STARTERS ─────────────────────────────────────────────────────
+            { id:'start_g1',  icon:'🔴', name:'STARTERS GEN 1', desc:'9 starters GEN 1',  cat:'STARTERS' },
+            { id:'start_g2',  icon:'🌕', name:'STARTERS GEN 2', desc:'9 starters GEN 2',  cat:'STARTERS' },
+            { id:'start_g3',  icon:'🌿', name:'STARTERS GEN 3', desc:'9 starters GEN 3',  cat:'STARTERS' },
+            { id:'start_g4',  icon:'💎', name:'STARTERS GEN 4', desc:'9 starters GEN 4',  cat:'STARTERS' },
+            { id:'start_g5',  icon:'🌑', name:'STARTERS GEN 5', desc:'9 starters GEN 5',  cat:'STARTERS' },
+            { id:'start_g6',  icon:'🌊', name:'STARTERS GEN 6', desc:'9 starters GEN 6',  cat:'STARTERS' },
+            { id:'start_g7',  icon:'🌺', name:'STARTERS GEN 7', desc:'9 starters GEN 7',  cat:'STARTERS' },
+            { id:'start_g8',  icon:'⚔️', name:'STARTERS GEN 8', desc:'9 starters GEN 8',  cat:'STARTERS' },
+            { id:'start_all', icon:'🏅', name:'MAÎTRE STARTERS', desc:'Les 72 starters',   cat:'STARTERS' },
+            // ── ANCIENNETÉ ────────────────────────────────────────────────────
+            { id:'days30',  icon:'⏰', name:'FIDÈLE',           desc:'Jouer depuis 30+ jours',   cat:'ANCIENNETÉ'},
+            { id:'days90',  icon:'🕰️', name:'VIEUX BRISCARD',  desc:'Jouer depuis 90+ jours',   cat:'ANCIENNETÉ'},
+            // ── SECRETS ───────────────────────────────────────────────────────
+            { id:'secret_leviator',   icon:'🌊', name:'LÉVIATOR ✨',        desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_mew',        icon:'🌸', name:'MEW ✨',             desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_birds',      icon:'🦅', name:'TRIO LÉGENDAIRE ✨', desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g1', icon:'🔴', name:'STARTERS GEN1 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g2', icon:'🌕', name:'STARTERS GEN2 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g3', icon:'🌿', name:'STARTERS GEN3 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g4', icon:'💎', name:'STARTERS GEN4 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g5', icon:'🌑', name:'STARTERS GEN5 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g6', icon:'🌊', name:'STARTERS GEN6 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g7', icon:'🌺', name:'STARTERS GEN7 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'secret_starter_g8', icon:'⚔️', name:'STARTERS GEN8 ✨',  desc:'???', cat:'SECRETS', hidden:true },
+            { id:'magicarpe',         icon:'🐟', name:'MAGICARPE !!',       desc:'???', cat:'SECRETS', hidden:true },
+            { id:'mewtwo',            icon:'🧬', name:'ADN MODIFIÉ',        desc:'???', cat:'SECRETS', hidden:true },
+        ];
+
+        // ── COMPLÉTION POKÉDEX : gen1-8 regroupées, row = gen, cat unique ────
+        const gens = ['GEN 1','GEN 2','GEN 3','GEN 4','GEN 5','GEN 6','GEN 7','GEN 8'];
+        const ms   = [{s:'25%',e:'🥉',p:25},{s:'50%',e:'🥈',p:50},{s:'COMPLÈTE',e:'🥇',p:100}];
+        gens.forEach((g,i) => ms.forEach(m => defs.push({
+            id:`gen${i+1}_${m.p}`, icon:m.e, name:`${g} ${m.s}`,
+            desc:`${m.p}% de la ${g}`, cat:'COMPLÉTION POKÉDEX', row:g
+        })));
+        defs.push({ id:'bonus100', icon:'❓', name:'UN POKEMON ??', desc:'???', cat:'SECRETS', hidden:true });
+        return defs;
+    }
+
+    // Vérifie si un achievement est débloqué (lit le map chargé depuis le serveur)
+    function isAchievUnlocked(id) {
+        return id in achievUnlockMap;
+    }
+
+    // Retourne la date de déverrouillage depuis le serveur
+    function achievUnlockDate(id) {
+        return achievUnlockMap[id] ? new Date(achievUnlockMap[id]) : null;
+    }
+
+    function renderAchievementsGlobal() {
+        const container = document.getElementById('mainContainer');
+        container.innerHTML = '';
+        achievFilterCatches = null;
+
+        // Wrapper
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'grid-column:1/-1;padding:14px;';
+        container.appendChild(wrap);
+
+        // Barre de filtre
+        const bar = document.createElement('div');
+        bar.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;';
+
+        const btnAll = document.createElement('button');
+        btnAll.className = 'lb-sort-btn active';
+        btnAll.id = 'achievBtnAll';
+        btnAll.style.fontSize = '7px';
+        btnAll.innerText = 'TOUS';
+        btnAll.onclick = () => setAchievFilter('');
+        bar.appendChild(btnAll);
+
+        if (currentUser) {
+            const btnMe = document.createElement('button');
+            btnMe.className = 'lb-sort-btn';
+            btnMe.id = 'achievBtnMe';
+            btnMe.style.fontSize = '7px';
+            btnMe.innerHTML = 'MOI &#9658;';
+            btnMe.onclick = () => setAchievFilter(currentUser.username);
+            bar.appendChild(btnMe);
+        }
+
+        const inputWrap = document.createElement('div');
+        inputWrap.style.cssText = 'position:relative;flex:1;min-width:140px;max-width:280px;';
+        inputWrap.innerHTML =
+            '<input class="lb-search" type="text" id="achievSearchInput" placeholder="DRESSEUR..." autocomplete="off" style="width:100%">' +
+            '<div class="lb-autocomplete-list" id="achievAutoList" style="display:none"></div>';
+        bar.appendChild(inputWrap);
+
+        const btnSearch = document.createElement('button');
+        btnSearch.className = 'lb-sort-btn';
+        btnSearch.style.cssText = 'font-size:11px;background:var(--red);color:#fff;border-color:var(--red);';
+        btnSearch.innerHTML = 'OK &#9658;';
+        btnSearch.onclick = () => {
+            const v = document.getElementById('achievSearchInput')?.value.trim() || '';
+            document.getElementById('achievAutoList').style.display = 'none';
+            setAchievFilter(v);
+        };
+        bar.appendChild(btnSearch);
+
+        const statusSpan = document.createElement('span');
+        statusSpan.id = 'achievStatus';
+        statusSpan.style.cssText = 'font-family:var(--pf);font-size:11px;color:#555;';
+        bar.appendChild(statusSpan);
+
+        wrap.appendChild(bar);
+
+        // Wirer l'input après insertion
+        setTimeout(() => {
+            const inp = document.getElementById('achievSearchInput');
+            if (inp) {
+                inp.addEventListener('input', onAchievSearch);
+                inp.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const v = inp.value.trim();
+                        document.getElementById('achievAutoList').style.display = 'none';
+                        setAchievFilter(v);
+                    }
+                });
+                inp.addEventListener('blur', () => setTimeout(() => {
+                    const l = document.getElementById('achievAutoList');
+                    if (l) l.style.display = 'none';
+                }, 200));
+            }
+        }, 0);
+
+        // Charger MOI par défaut si connecté, sinon TOUS
+        if (currentUser) {
+            setTimeout(() => setAchievFilter(currentUser.username), 100);
+        }
+
+        // Grille
+        const grid = document.createElement('div');
+        grid.id = 'achievGrid';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;';
+        wrap.appendChild(grid);
+
+        paintAchievGrid();
+    }
+
+    function getAchievProgress(id, catches) {
+        if (!catches || !catches.length) return { pct: 0, label: '' };
+        const total  = catches.length;
+        const totVal = catches.reduce((s,c) => s+(c.catchValue||0), 0);
+        const unique = new Set(catches.map(c => c.catchName)).size;
+        const rar    = { Junk:0, Common:0, Uncommon:0, Rare:0, Epic:0, Legendary:0 };
+        catches.forEach(c => { if (rar[c.catchRarity] !== undefined) rar[c.catchRarity]++; });
+        const best = Math.max(...catches.map(c => c.catchValue||0), 0);
+        const comp = Math.round(unique / 1029 * 100);
+        const shinyCount = catches.filter(c => c.catchName?.includes('Shiny')).length;
+        const megaCount  = catches.filter(c => c.catchName?.includes('Méga')).length;
+        const gigasCount = catches.filter(c => c.catchName?.includes('Gigamax')).length;
+        const nc = {}; catches.forEach(c => { nc[c.catchName] = (nc[c.catchName]||0)+1; });
+        const maxDup = Math.max(0, ...Object.values(nc));
+        const oldest = catches.reduce((m,c) => Math.min(m, new Date(c.timestamp).getTime()), Infinity);
+        const daysSince = isFinite(oldest) ? Math.floor((Date.now()-oldest)/86400000) : 0;
+
+        const tradeCount = achievUnlockMap._tradeCount || 0;
+        const map = {
+            first:  [Math.min(total,1), 1],
+            c10:    [Math.min(total,10), 10],
+            c100:   [Math.min(total,100), 100],
+            c500:   [Math.min(total,500), 500],
+            c1000:  [Math.min(total,1000), 1000],
+            dex10:  [Math.min(comp,10), 10],
+            dex25:  [Math.min(comp,25), 25],
+            dex50:  [Math.min(comp,50), 50],
+            dex100: [Math.min(comp,100), 100],
+            rare1:  [Math.min(rar.Rare,1),   1],
+            rare10: [Math.min(rar.Rare,10),  10],
+            rare25: [Math.min(rar.Rare,25),  25],
+            rare50: [Math.min(rar.Rare,50),  50],
+            rare100:[Math.min(rar.Rare,100), 100],
+            epic1:  [Math.min(rar.Epic,1),   1],
+            epic5:  [Math.min(rar.Epic,5),   5],
+            epic10: [Math.min(rar.Epic,10),  10],
+            epic15: [Math.min(rar.Epic,15),  15],
+            epic20: [Math.min(rar.Epic,20),  20],
+            epic50: [Math.min(rar.Epic,50),  50],
+            leg1:   [Math.min(rar.Legendary,1),   1],
+            leg5:   [Math.min(rar.Legendary,5),   5],
+            leg10:  [Math.min(rar.Legendary,10),  10],
+            leg20:  [Math.min(rar.Legendary,20),  20],
+            leg50:  [Math.min(rar.Legendary,50),  50],
+            leg100: [Math.min(rar.Legendary,100), 100],
+            junk20: [Math.min(rar.Junk,20),  20],
+            junk50: [Math.min(rar.Junk,50),  50],
+            junk100:[Math.min(rar.Junk,100), 100],
+            val1k:  [Math.min(totVal,1000), 1000],
+            val10k: [Math.min(totVal,10000), 10000],
+            val100k:[Math.min(totVal,100000), 100000],
+            best500:[Math.min(best,500), 500],
+            trade1: [Math.min(tradeCount,1),   1],
+            trade10:[Math.min(tradeCount,10),  10],
+            trade25:[Math.min(tradeCount,25),  25],
+            trade50:[Math.min(tradeCount,50),  50],
+            trade100:[Math.min(tradeCount,100),100],
+            trade150:[Math.min(tradeCount,150),150],
+            trade200:[Math.min(tradeCount,200),200],
+            shiny1: [Math.min(shinyCount,1),  1],
+            shiny5: [Math.min(shinyCount,5),  5],
+            shiny10:[Math.min(shinyCount,10), 10],
+            shiny20:[Math.min(shinyCount,20), 20],
+            shiny30:[Math.min(shinyCount,30), 30],
+            shiny40:[Math.min(shinyCount,40), 40],
+            shiny41:[Math.min(shinyCount,41), 41],
+            mega1:  [Math.min(megaCount,1),   1],
+            mega5:  [Math.min(megaCount,5),   5],
+            mega10: [Math.min(megaCount,10),  10],
+            mega15: [Math.min(megaCount,15),  15],
+            gigas1: [Math.min(gigasCount,1),  1],
+            heavy1: [catches.some(c=>(c.catchWeight||0)>=999.9)?1:0, 1],
+            light1: [catches.some(c=>(c.catchWeight||0)<=0.1&&(c.catchWeight||0)>0)?1:0, 1],
+            val1000:[Math.min(best,1000), 1000],
+            dup2:   [Math.min(maxDup,2), 2],
+            dup5:   [Math.min(maxDup,5), 5],
+            magicarpe:[catches.some(c=>c.catchName==='Magicarpe')?1:0, 1],
+            mewtwo:   [catches.some(c=>c.catchName==='Mewtwo')?1:0, 1],
+            days30: [Math.min(daysSince,30), 30],
+            days90: [Math.min(daysSince,90), 90],
+            start_g1: [['bulbizarre','herbizarre','florizarre','salamèche','reptincel','dracaufeu','carapuce','carabaffe','tortank'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_g2: [['germignon','macronium','méganium','hericendre','feurisson','typhlosion','kaiminus','crocrodil','aligatueur'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_g3: [['arcko','massko','jungko','poussifeu','galifeu','braségali','gobou','flobio','laggron'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_g4: [['tortipouss','boskara','torterra','ouisticram','chimpenfeu','simiabraz','tiplouf','prinplouf','pingoléon'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_g5: [['vipélierre','lianaja','majaspic','gruikui','goinfrex','roitiflam','moustillon','mateloutre','clamiral'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_g6: [['marisson','boguérisse','blindépique','feunnec','roussil','goupelin','grenousse','croâporal','amphinobi'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_g7: [['brindibou','efflèche','archéduc','flamiaou','matoufeu','félinferno','otaquin','otarlette','oratoria'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_g8: [['ouistempo','badabouin','gorythmic','flambino','lapyro','pyrobut','larméléon','arrozard','lézargus'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 9],
+            start_all: [['bulbizarre','herbizarre','florizarre','salamèche','reptincel','dracaufeu','carapuce','carabaffe','tortank','germignon','macronium','méganium','hericendre','feurisson','typhlosion','kaiminus','crocrodil','aligatueur','arcko','massko','jungko','poussifeu','galifeu','braségali','gobou','flobio','laggron','tortipouss','boskara','torterra','ouisticram','chimpenfeu','simiabraz','tiplouf','prinplouf','pingoléon','vipélierre','lianaja','majaspic','gruikui','goinfrex','roitiflam','moustillon','mateloutre','clamiral','marisson','boguérisse','blindépique','feunnec','roussil','goupelin','grenousse','croâporal','amphinobi','brindibou','efflèche','archéduc','flamiaou','matoufeu','félinferno','otaquin','otarlette','oratoria','ouistempo','badabouin','gorythmic','flambino','lapyro','pyrobut','larméléon','arrozard','lézargus'].filter(n=>new Set(catches.map(c=>c.catchName.toLowerCase())).has(n)).length, 72],
+        };
+        if (id in map) {
+            const [cur, max] = map[id];
+            const pct = Math.round(cur / max * 100);
+            return { pct, label: cur + ' / ' + max };
+        }
+        // Gen achievements
+        if (id.startsWith('gen') && allPokemon.length) {
+            const parts = id.match(/gen(\d+)_(\d+)/);
+            if (!parts) return { pct: 0, label: '' };
+            const genIdx = parseInt(parts[1]);
+            const target = parseInt(parts[2]);
+            const slice  = getGenSlice(genIdx);
+            if (!slice.length) return { pct: 0, label: '' };
+            const ownedNames = new Set(catches.map(c => c.catchName.toLowerCase()));
+            const owned = slice.filter(p => ownedNames.has(p.name.toLowerCase())).length;
+            const curPct = Math.round(owned / slice.length * 100);
+            return { pct: Math.round(Math.min(curPct, target) / target * 100), label: owned + ' / ' + slice.length };
+        }
+        if (id === 'bonus100' && allPokemon.length) {
+            const slice = getGenSlice(BORNES.length + 1);
+            const ownedNames = new Set(catches.map(c => c.catchName.toLowerCase()));
+            const owned = slice.filter(p => ownedNames.has(p.name.toLowerCase())).length;
+            return { pct: owned > 0 ? 100 : 0, label: '' };
+        }
+        return { pct: 0, label: '' };
+    }
+
+    function paintAchievGrid() {
+        const grid = document.getElementById('achievGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        grid.style.display = 'block';
+        const defs     = getAllAchievDefs();
+        const filtered = achievFilterCatches !== null;
+
+        // Grouper par cat en préservant l'ordre d'apparition
+        const catOrder = [];
+        const catMap   = {};
+        defs.forEach(a => {
+            if (!catMap[a.cat]) { catMap[a.cat] = []; catOrder.push(a.cat); }
+            catMap[a.cat].push(a);
+        });
+
+        catOrder.forEach(cat => {
+            const items = catMap[cat];
+            const visibleItems = filtered
+                ? items.filter(a => !a.hidden || isAchievUnlocked(a.id))
+                : items.filter(a => !a.hidden);
+            if (visibleItems.length === 0) return;
+
+            // En-tête de catégorie
+            const header = document.createElement('div');
+            header.style.cssText =
+                'font-family:var(--pf);font-size:12px;color:#cc0000;letter-spacing:1px;' +
+                'padding:10px 2px 5px;border-bottom:1px solid #2a0000;margin-bottom:6px;margin-top:10px;';
+            header.innerText = '▸ ' + cat;
+            grid.appendChild(header);
+
+            // Grouper par row si présent, sinon tout dans un seul groupe
+            const rowOrder = [];
+            const rowMap   = {};
+            items.forEach(a => {
+                const r = a.row || '__default__';
+                if (!rowMap[r]) { rowMap[r] = []; rowOrder.push(r); }
+                rowMap[r].push(a);
+            });
+
+            rowOrder.forEach(row => {
+                const rowItems = rowMap[row];
+
+                const subgrid = document.createElement('div');
+                subgrid.style.cssText =
+                    'display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-bottom:4px;';
+                grid.appendChild(subgrid);
+
+                rowItems.forEach(a => {
+                    const unlocked = filtered && isAchievUnlocked(a.id);
+                    if (a.hidden && !unlocked) return;
+                    const prog    = filtered ? getAchievProgress(a.id, achievFilterCatches) : { pct: 0, label: '' };
+                    const isBonus = a.id === 'bonus100';
+                    const showBar = filtered && !isBonus;
+
+                    const card = document.createElement('div');
+                    card.style.cssText =
+                        'background:#111;border:1px solid ' + (unlocked ? '#ffae00' : '#2a2a2a') + ';' +
+                        'border-radius:4px;padding:8px 6px 10px;cursor:pointer;text-align:center;' +
+                        'transition:border-color 0.15s,opacity 0.15s;position:relative;' +
+                        'opacity:' + (filtered && !unlocked ? '0.35' : '1') + ';';
+                    card.innerHTML =
+                        '<div style="font-size:39px;line-height:1;margin-bottom:6px;' + (filtered && !unlocked ? 'filter:grayscale(1)' : '') + '">' + a.icon + '</div>' +
+                        '<div style="font-family:var(--pf);font-size:11px;color:' + (unlocked ? '#ffae00' : '#555') + ';line-height:1.5;letter-spacing:0.3px;">' + a.name + '</div>' +
+                        '<div style="font-family:var(--pf);font-size:9px;color:#444;margin-top:2px;line-height:1.4;">' + a.desc + '</div>' +
+                        (showBar && prog.label ? '<div style="font-family:var(--pf);font-size:9px;color:#555;margin-top:2px;">' + prog.label + '</div>' : '') +
+                        (showBar ? '<div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:#222;border-radius:0 0 4px 4px;">' +
+                            '<div style="height:100%;width:' + prog.pct + '%;background:' + (unlocked ? '#ffae00' : '#cc0000') + ';border-radius:0 0 4px 4px;transition:width 0.5s ease;"></div>' +
+                            '</div>' : '');
+                    card.onclick = () => showAchievCard(a, prog, unlocked);
+                    subgrid.appendChild(card);
+                });
+            });
+        });
+    }
+
+    function showAchievCard(a, prog, unlocked) {
+        prog     = prog     || { pct: 0, label: '' };
+        unlocked = unlocked || false;
+        const isBonus  = a.id === 'bonus100';
+        const showBar  = !isBonus;
+        const barColor = unlocked ? '#ffae00' : '#cc0000';
+        // Utilise globalBestValuePerName data — les catches sont déjà groupés
+        // On calcule depuis window._allCatchesCache si dispo (chargé au démarrage)
+        let overlay = document.getElementById('achievCardOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'achievCardOverlay';
+            overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:3500;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;';
+            overlay.onclick = e => { if (e.target===overlay) overlay.style.display='none'; };
+            document.body.appendChild(overlay);
+        }
+        overlay.style.display = 'flex';
+        overlay.innerHTML = `
+            <div style="background:#1a0000;border:3px solid var(--red);border-radius:10px;width:100%;max-width:460px;margin-top:20px;overflow:hidden;">
+                <div style="background:#0d0000;padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2a0000;">
+                    <span style="font-size:39px">${a.icon}</span>
+                    <div style="flex:1">
+                        <div style="font-family:var(--pf);font-size:14px;color:#ffae00">${a.name}</div>
+                        <div style="font-family:var(--pf);font-size:11px;color:#555;margin-top:4px">${a.desc}</div>
+                        ${showBar ? `<div style="margin-top:7px;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div style="flex:1;height:4px;background:#222;border-radius:2px;overflow:hidden;">
+                                    <div style="height:100%;width:${prog.pct}%;background:${barColor};border-radius:2px;transition:width 0.5s ease;"></div>
+                                </div>
+                                ${prog.label ? `<span style="font-family:var(--pf);font-size:11px;color:#555;white-space:nowrap;">${prog.label}</span>` : ''}
+                            </div>
+                        </div>` : ''}
+                    </div>
+                    <button onclick="document.getElementById('achievCardOverlay').style.display='none'"
+                            style="background:none;border:none;color:#555;cursor:pointer;font-size:21px;">✕</button>
+                </div>
+                <div id="achievCardBody" style="padding:12px 14px;">
+                    <div style="font-family:var(--pf);font-size:9px;color:#444">CALCUL EN COURS...</div>
+                </div>
+            </div>`;
+
+        // Charger les holders depuis le serveur (achievements persistés en DB)
+        const body = document.getElementById('achievCardBody');
+        fetch(`${API}/achievements-holders/${a.id}`)
+            .then(r => r.json())
+            .then(holders => {
+                if (!holders.length) {
+                    body.innerHTML = '<div style="font-family:var(--pf);font-size:9px;color:#444;text-align:center;padding:20px">PERSONNE N\'A ENCORE CET ACHIEVEMENT</div>';
+                    return;
+                }
+                body.innerHTML =
+                    '<div style="font-family:var(--pf);font-size:11px;color:#555;margin-bottom:10px;">' + holders.length + ' DRESSEUR' + (holders.length>1?'S':'') + ' ONT CET ACHIEVEMENT</div>' +
+                    holders.map(h => {
+                        const dateStr = h.unlockedAt ? new Date(h.unlockedAt).toLocaleDateString('fr-FR') : '?';
+                        const lb  = leaderboardData.find(u => u.userName.toLowerCase() === h.userName.toLowerCase());
+                        const sp  = cldUrl(lb?.bestCatchSprite || ((lb?.bestCatchName||h.userName)+'.gif'), 28, 28);
+                        return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #1a1a1a;cursor:pointer;" onclick="document.getElementById(&quot;achievCardOverlay&quot;).style.display=&quot;none&quot;;openProfile(&quot;' + h.userName + '&quot;)">' +
+                            '<img src="' + sp + '" onerror="this.onerror=null;this.src=\''+DEFAULT_IMG+'\'" style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;flex-shrink:0;">' +
+                            '<span style="font-family:var(--pf);font-size:12px;color:#fff;flex:1">' + h.userName + '</span>' +
+                            '<span style="font-family:var(--pf);font-size:11px;color:#555;">📅 ' + dateStr + '</span>' +
+                            '</div>';
+                    }).join('');
+            })
+            .catch(() => {
+                body.innerHTML = '<div style="font-family:var(--pf);font-size:9px;color:#444;text-align:center;padding:20px">ERREUR CHARGEMENT</div>';
+            });
+    }
+
+    let achievTimer = null;
+    function onAchievSearch() {
+        const input = document.getElementById('achievSearchInput');
+        const list  = document.getElementById('achievAutoList');
+        if (!input || !list) return;
+        const val = input.value.trim();
+        const low = val.toLowerCase();
+
+        list.innerHTML = '';
+        if (low && leaderboardData.length) {
+            const matches = leaderboardData
+                .filter(u => u.userName.toLowerCase().includes(low))
+                .sort((a,b) => (b.totalValue||0) - (a.totalValue||0))
+                .slice(0, 6);
+
+            if (matches.length) {
+                matches.forEach(u => {
+                    const spriteUrl = cldUrl(u.bestCatchSprite || u.bestCatchName + '.gif');
+                    const name = u.userName;
+                    const idx  = name.toLowerCase().indexOf(low);
+                    const hl   = name.slice(0,idx)
+                        + '<span class="lb-autocomplete-highlight">' + name.slice(idx, idx+low.length) + '</span>'
+                        + name.slice(idx+low.length);
+
+                    const item = document.createElement('div');
+                    item.className = 'lb-autocomplete-item';
+                    const img2 = document.createElement('img');
+                    img2.src = spriteUrl;
+                    img2.onerror = function(){ this.onerror=null; this.src=DEFAULT_IMG; };
+                    img2.style.cssText = 'width:20px;height:20px;object-fit:contain;image-rendering:pixelated;flex-shrink:0;';
+                    const sp1 = document.createElement('span'); sp1.innerHTML = hl;
+                    const sp2 = document.createElement('span'); sp2.style.cssText = 'color:#555;font-size:8px;margin-left:auto'; sp2.textContent = (u.totalValue||0) + '₽';
+                    item.appendChild(img2); item.appendChild(sp1); item.appendChild(sp2);
+                    item.onmousedown = (e) => {
+                        e.preventDefault();
+                        input.value = name;
+                        list.style.display = 'none';
+                        clearTimeout(achievTimer);
+                        setAchievFilter(name);
+                    };
+                    list.appendChild(item);
+                });
+                list.style.display = 'block';
+                list.style.width = input.offsetWidth + 'px';
+            } else {
+                list.style.display = 'none';
+            }
+        } else {
+            list.style.display = 'none';
+        }
+
+    }
+
+    async function setAchievFilter(username) {
+        document.getElementById('achievAutoList')?.style && (document.getElementById('achievAutoList').style.display = 'none');
+        const btnAll = document.getElementById('achievBtnAll');
+        const btnMe  = document.getElementById('achievBtnMe');
+        const input  = document.getElementById('achievSearchInput');
+        const status = document.getElementById('achievStatus');
+
+        if (!username) {
+            if (input)  input.value = '';
+            if (btnAll) btnAll.classList.add('active');
+            if (btnMe)  btnMe.classList.remove('active');
+            achievFilterCatches = null;
+            if (status) status.innerText = '';
+            paintAchievGrid();
+            return;
+        }
+        if (input)  input.value = username;
+        if (btnAll) btnAll.classList.remove('active');
+        const isMe = currentUser && username.toLowerCase() === currentUser.username.toLowerCase();
+        if (btnMe)  btnMe.classList.toggle('active', isMe);
+        if (status) status.innerText = 'CHARGEMENT...';
+
+        // Double fetch : captures (pour progress bars) + achievements (pour unlock state)
+        try {
+            const [catchRes, achievRes] = await Promise.all([
+                fetch(`${API}/catches/${username}`),
+                fetch(`${API}/achievements/${username}`)
+            ]);
+            const data = await catchRes.json();
+            achievFilterCatches = data.catches || [];
+            achievUnlockMap     = await achievRes.json();
+
+            const total    = getAllAchievDefs().length;
+            const unlocked = Object.keys(achievUnlockMap).length;
+            if (status) status.innerText = unlocked + ' / ' + total + ' DÉBLOQUÉS';
+            paintAchievGrid();
+        } catch {
+            if (status) status.innerText = 'ERREUR';
+        }
+    }
+
+    async function fetchLeaderboard() {
+        if (leaderboardData.length > 0) { renderLeaderboard(); return; }
+        setStatus("CHARGEMENT DU LEADERBOARD...");
+        try {
+            leaderboardData = await (await fetch(`${API}/leaderboard`)).json();
+            renderLeaderboard();
+        } catch { setStatus("ERREUR SERVEUR."); }
+    }
+
+    function sortLB(key) {
+        lbSortKey = key;
+        document.querySelectorAll('.lb-sort-btn').forEach(b => b.classList.remove('active'));
+        const ids = { totalValue:'lb-btn-value', totalCaptures:'lb-btn-captures', uniqueCount:'lb-btn-unique', bestCatch:'lb-btn-best', avgValue:'lb-btn-avg', crownCount:'lb-btn-crown', poopCount:'lb-btn-poop' };
+        if (ids[key]) document.getElementById(ids[key]).classList.add('active');
+        renderLeaderboard();
+    }
+
+    // Calcule un "streak" visuel basé sur les captures totales
+    function getStreakInfo(u, allUsers) {
+        const max = Math.max(...allUsers.map(x => x.totalCaptures || 0));
+        const ratio = max > 0 ? (u.totalCaptures || 0) / max : 0;
+        if (ratio >= 0.75) return { label: '🔥🔥🔥', cls: 'hot',  tip: 'TRÈS ACTIF' };
+        if (ratio >= 0.40) return { label: '🔥🔥',   cls: 'warm', tip: 'ACTIF' };
+        if (ratio >= 0.15) return { label: '🔥',      cls: 'warm', tip: 'EN ROUTE' };
+        return              { label: '❄️',      cls: 'cold', tip: 'INACTIF' };
+    }
+
+    function renderLeaderboard() {
+        const container = document.getElementById('mainContainer');
+        container.innerHTML = '';
+
+        const searchVal = document.getElementById('lbSearchInput') ? document.getElementById('lbSearchInput').value.trim().toLowerCase() : '';
+        const sorted    = [...leaderboardData].sort((a,b) => (b[lbSortKey]||0) - (a[lbSortKey]||0));
+        const filtered  = searchVal ? sorted.filter(u => u.userName.toLowerCase().includes(searchVal)) : sorted;
+
+        setStatus(`${filtered.length} DRESSEURS AU CLASSEMENT.`);
+        if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'grid-column:1/-1;padding:30px;text-align:center;font-size:11px;color:#444';
+            empty.innerText = 'AUCUN RÉSULTAT';
+            container.appendChild(empty);
+            return;
+        }
+
+        // ── Wrapper global (bypass le grid des cartes) ────────────────────────
+        const lbWrap = document.createElement('div');
+        lbWrap.style.cssText = 'grid-column:1/-1;width:100%;';
+        container.appendChild(lbWrap);
+
+        // ── STATS GLOBALES ────────────────────────────────────────────────────
+        const totalCaptures   = leaderboardData.reduce((s, u) => s + (u.totalCaptures||0), 0);
+        const totalValue      = leaderboardData.reduce((s, u) => s + (u.totalValue||0), 0);
+        const totalDresseurs  = leaderboardData.length;
+        const bestUser        = [...leaderboardData].sort((a,b) => (b.bestCatch||0)-(a.bestCatch||0))[0];
+
+        const statsEl = document.createElement('div');
+        statsEl.className = 'lb-global-stats';
+
+        const fmt = (n) => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : n;
+
+        statsEl.innerHTML = `
+            <div class="lb-stat-card s-red">
+                <div class="lb-stat-label">CAPTURES TOTALES</div>
+                <div class="lb-stat-value s-red">${fmt(totalCaptures)}</div>
+                <div class="lb-stat-sub">sur ${totalDresseurs} dresseurs</div>
+            </div>
+            <div class="lb-stat-card s-gold">
+                <div class="lb-stat-label">VALEUR COMMUNAUTÉ</div>
+                <div class="lb-stat-value s-gold">${fmt(totalValue)}₽</div>
+                <div class="lb-stat-sub">cumulée</div>
+            </div>
+            <div class="lb-stat-card s-blue">
+                <div class="lb-stat-label">MOY. CAPTURES / DRESSEUR</div>
+                <div class="lb-stat-value s-blue">${totalDresseurs > 0 ? Math.round(totalCaptures/totalDresseurs) : 0}</div>
+                <div class="lb-stat-sub">captures en moyenne</div>
+            </div>
+            <div class="lb-stat-card s-purple">
+                <div class="lb-stat-label">MEILLEURE CAPTURE</div>
+                ${bestUser ? `
+                <img class="lb-stat-sprite" src="${cldUrl(bestUser.bestCatchSprite || bestUser.bestCatchName+'.gif')}"
+                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                <div class="lb-stat-value s-purple" style="font-size:11px;margin-top:2px">${bestUser.bestCatchName||'?'}</div>
+                <div class="lb-stat-sub">${bestUser.bestCatch||0}₽ — ${bestUser.userName}</div>
+                ` : '<div class="lb-stat-sub">—</div>'}
+            </div>
+        `;
+        lbWrap.appendChild(statsEl);
+
+        // ── PODIUM top 3 ──────────────────────────────────────────────────────
+        const top3 = filtered.slice(0, Math.min(3, filtered.length));
+        const podiumOrder = top3.length === 1 ? [top3[0]] :
+                            top3.length === 2 ? [top3[1], top3[0]] :
+                            [top3[1], top3[0], top3[2]];
+
+        const podiumEl = document.createElement('div');
+        podiumEl.className = 'lb-podium';
+
+        podiumOrder.forEach(u => {
+            const rank      = filtered.indexOf(u) + 1;
+            const rankClass = rank===1?'rank-1':rank===2?'rank-2':'rank-3';
+            const crown     = rank===1?'👑':rank===2?'🥈':'🥉';
+            const spriteUrl = cldUrl(u.bestCatchSprite || `${u.bestCatchName}.gif`);
+            const completion = Math.round((u.uniqueCount||0) / 1029 * 100);
+
+            const item = document.createElement('div');
+            item.className = 'lb-podium-item';
+            item.onclick   = () => openProfile(u.userName);
+            item.innerHTML = `
+                <div class="lb-podium-card ${rankClass}">
+                    <div class="lb-podium-crown">${crown}</div>
+                    <img class="lb-podium-sprite" src="${spriteUrl}"
+                         onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                    <div class="lb-podium-name">${u.userName}</div>
+                    <div class="lb-podium-val">${u.totalValue||0}₽</div>
+                    <div class="lb-podium-sub">${u.totalCaptures||0} captures • ${completion}%</div>
+                </div>
+                <div class="lb-podium-base ${rankClass}"></div>
+            `;
+            podiumEl.appendChild(item);
+        });
+        lbWrap.appendChild(podiumEl);
+
+        // ── TABLEAU tous les joueurs ───────────────────────────────────────────
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'lb-table-wrap';
+
+        const table = document.createElement('table');
+        table.className = 'lb-table';
+
+        const arrow = (key) => lbSortKey === key ? ' ▼' : '';
+        table.innerHTML = `<thead><tr>
+            <th>#</th>
+            <th>DRESSEUR</th>
+            <th onclick="sortLB('totalValue')"    class="${lbSortKey==='totalValue'?'sorted':''}"    style="text-align:right">VALEUR${arrow('totalValue')}</th>
+            <th onclick="sortLB('avgValue')"      class="${lbSortKey==='avgValue'?'sorted':''}"      style="text-align:right">MOY.${arrow('avgValue')}</th>
+            <th onclick="sortLB('totalCaptures')" class="${lbSortKey==='totalCaptures'?'sorted':''}" style="text-align:right">CAPTURES${arrow('totalCaptures')}</th>
+            <th onclick="sortLB('uniqueCount')"   class="${lbSortKey==='uniqueCount'?'sorted':''}">COMPLÉTION${arrow('uniqueCount')}</th>
+            <th onclick="sortLB('bestCatch')"     class="${lbSortKey==='bestCatch'?'sorted':''}">MEILLEUR${arrow('bestCatch')}</th>
+            <th onclick="sortLB('crownCount')"    class="${lbSortKey==='crownCount'?'sorted':''}">👑${arrow('crownCount')}</th>
+            <th onclick="sortLB('poopCount')"     class="${lbSortKey==='poopCount'?'sorted':''}">💩${arrow('poopCount')}</th>
+        </tr></thead>`;
+
+        const tbody = document.createElement('tbody');
+        filtered.forEach((u, i) => {
+            const rank       = i + 1;
+            const rankClass  = rank===1?'gold':rank===2?'silver':rank===3?'bronze':'';
+            const rankSymbol = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':`#${rank}`;
+            const spriteUrl  = cldUrl(u.bestCatchSprite || `${u.bestCatchName}.gif`);
+            const completion = Math.round((u.uniqueCount||0) / 1029 * 100);
+
+            const tr = document.createElement('tr');
+            tr.onclick = () => openProfile(u.userName);
+            tr.innerHTML = `
+                <td class="lb-rank ${rankClass}">${rankSymbol}</td>
+                <td class="lb-username">${u.userName}</td>
+                <td class="lb-val ${lbSortKey==='totalValue'?'highlight':''}">${u.totalValue||0}₽</td>
+                <td class="lb-val ${lbSortKey==='avgValue'?'highlight':''}" style="text-align:right">${Math.round(u.avgValue||0)} ₽</td>
+                <td class="lb-val ${lbSortKey==='totalCaptures'?'highlight':''}">${u.totalCaptures||0}</td>
+                <td>
+                    <div class="lb-completion-wrap">
+                        <div class="lb-completion-bar"><div class="lb-completion-fill" style="width:${completion}%"></div></div>
+                        <span style="font-size:9px;color:#555">${completion}%</span>
+                    </div>
+                </td>
+                <td><div class="lb-best">
+                    <img class="lb-sprite" src="${spriteUrl}" onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                    <span style="font-size:9px;color:#aaa">${u.bestCatchName||'?'}<br>
+                    <span style="color:var(--rarity-legendary)">${u.bestCatch||0}₽</span></span>
+                </div></td>
+                <td class="lb-val ${lbSortKey==='crownCount'?'highlight':''}" style="text-align:center">${u.crownCount||0} 👑</td>
+                <td class="lb-val ${lbSortKey==='poopCount'?'highlight':''}"  style="text-align:center">${u.poopCount||0} 💩</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+        lbWrap.appendChild(tableWrap);
+    }
+
+
+    // ─── PROFILE ───────────────────────────────────────────────────────────────
+    async function openProfile(username) {
+        setStatus(`CHARGEMENT DU PROFIL DE ${username.toUpperCase()}...`);
+        try {
+            await ensurePokemonLoaded();
+            const data    = await (await fetch(`${API}/catches/${username}`)).json();
+            const catches = data.catches || [];
+
+            document.getElementById('profileTitle').innerText = `PROFIL : ${username.toUpperCase()}`;
+
+            const totalVal    = catches.reduce((s,c) => s+(c.catchValue||0), 0);
+            const bestCatch   = catches.reduce((b,c) => (c.catchValue||0)>(b.catchValue||0)?c:b, {});
+            const uniqueNames = [...new Set(catches.map(c => c.catchName))];
+
+            document.getElementById('profileStats').innerHTML = `
+                <div class="profile-stat"><div class="profile-stat-label">CAPTURES</div><div class="profile-stat-value">${catches.length}</div></div>
+                <div class="profile-stat"><div class="profile-stat-label">UNIQUES</div><div class="profile-stat-value">${uniqueNames.length}</div></div>
+                <div class="profile-stat"><div class="profile-stat-label">VALEUR TOTALE</div><div class="profile-stat-value" style="font-size:12px">${totalVal}₽</div></div>
+                <div class="profile-stat"><div class="profile-stat-label">COMPLÉTION</div><div class="profile-stat-value" style="font-size:14px">${Math.round(uniqueNames.length/1029*100)}%</div></div>
+                <div class="profile-stat"><div class="profile-stat-label">SUCCÈS</div><div class="profile-stat-value" style="font-size:14px" id="profileStatSuccesVal">...</div></div>
+            `;
+
+            // ✅ FIX : q_auto + encodeURIComponent sur la meilleure capture
+            const bestFile = bestCatch.sprite || `${bestCatch.catchName}.gif`;
+            document.getElementById('profileBest').innerHTML = `
+                <img class="profile-best-img" src="${cldUrl(bestFile)}"
+                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                <div>
+                    <div class="profile-best-label">MEILLEURE CAPTURE</div>
+                    <div class="profile-best-name">${bestCatch.catchName||'?'}</div>
+                    <div style="font-size:11px;color:#ffae00;margin-top:4px">${bestCatch.catchValue||0}₽</div>
+                </div>
+            `;
+
+            const rarityStats = { Junk:0, Common:0, Uncommon:0, Rare:0, Epic:0, Legendary:0 };
+            catches.forEach(c => { if (rarityStats.hasOwnProperty(c.catchRarity)) rarityStats[c.catchRarity]++; });
+            document.getElementById('profileRarity').innerHTML = Object.entries(rarityStats)
+                .map(([r,n]) => `<span class="pill pill-${r}">${r.slice(0,3).toUpperCase()}. ${n}</span>`).join('');
+
+            const barsEl = document.getElementById('rarityBars');
+            barsEl.innerHTML = '';
+            Object.entries(rarityStats).forEach(([rarity, count]) => {
+                const pct = catches.length > 0 ? Math.round(count/catches.length*100) : 0;
+                const row = document.createElement('div');
+                row.className = 'rarity-bar-row';
+                row.innerHTML = `
+                    <div class="rarity-bar-label rarity-${rarity}">${rarity.toUpperCase()}</div>
+                    <div class="rarity-bar-track"><div class="rarity-bar-fill" style="width:0%;background:${RARITY_COLORS[rarity]}" data-width="${pct}%"></div></div>
+                    <div class="rarity-bar-info">${count} <span style="color:#333">|</span> ${pct}%</div>
+                `;
+                barsEl.appendChild(row);
+            });
+            requestAnimationFrame(() => {
+                barsEl.querySelectorAll('.rarity-bar-fill').forEach(b => { b.style.width = b.dataset.width; });
+            });
+
+            const catchesEl = document.getElementById('profileCatches');
+            catchesEl.innerHTML = '';
+            // ✅ FIX : q_auto + encodeURIComponent sur la grille des captures
+            catches.slice(0,12).forEach(c => {
+                const file   = c.sprite || `${c.catchName}.gif`;
+                const rarity = c.catchRarity || 'Common';
+                const div    = document.createElement('div');
+                div.className    = 'profile-catch-card';
+                div.style.cursor = 'pointer';
+                div.onclick      = () => openPokeModal(c.catchName, getRarity(c), c);
+                const allCaps = catches.filter(x => x.catchName.toLowerCase() === c.catchName.toLowerCase());
+                const lines   = allCaps.map(x => {
+                    const d = new Date(x.timestamp);
+                    return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+                }).join('<br>');
+                div.innerHTML = `
+                    <div class="card-tooltip">${allCaps.length>1?`${allCaps.length}x &#128197;<br>`:''}${lines}</div>
+                    <img src="${cldUrl(file)}"
+                         onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                    <div class="profile-catch-name rarity-${rarity}">${c.catchName}</div>
+                    <div class="profile-catch-val">${c.catchValue||0}₽</div>
+                `;
+                catchesEl.appendChild(div);
+            });
+
+            // Charger achievements depuis le serveur
+            let profileAchievMap = {};
+            try {
+                profileAchievMap = await (await fetch(`${API}/achievements/${username}`)).json();
+            } catch {}
+
+            renderAchievements(catches, profileAchievMap);
+
+            const unlockedCount = Object.keys(profileAchievMap).length;
+            const totalCount    = getAllAchievDefs().length;
+            const sucVal = document.getElementById('profileStatSuccesVal');
+            if (sucVal) sucVal.innerText = `${unlockedCount}/${totalCount}`;
+
+            document.getElementById('profileOverlay').classList.add('open');
+            setStatus('');
+        } catch { setStatus("ERREUR CHARGEMENT PROFIL."); }
+    }
+
+    // ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────
+    function computeAchievements(catches, tradeHistory) {
+        const total       = catches.length;
+        const totalVal    = catches.reduce((s,c) => s+(c.catchValue||0), 0);
+        const uniqueNames = [...new Set(catches.map(c => c.catchName))];
+        const rarityCount = { Junk:0, Common:0, Uncommon:0, Rare:0, Epic:0, Legendary:0 };
+        catches.forEach(c => { if (rarityCount[c.catchRarity] !== undefined) rarityCount[c.catchRarity]++; });
+        const bestVal     = Math.max(...catches.map(c => c.catchValue||0), 0);
+        const completion  = Math.round(uniqueNames.length / 1029 * 100);
+        const tradesAccepted = (tradeHistory || []).filter(t => t.status === 'accepted').length;
+        const shinyCount  = catches.filter(c => c.catchName?.includes('Shiny')).length;
+        const megaCount   = catches.filter(c => c.catchName?.includes('Méga')).length;
+        const gigasCount  = catches.filter(c => c.catchName?.includes('Gigamax')).length;
+        const nc2 = {}; catches.forEach(c => { nc2[c.catchName] = (nc2[c.catchName]||0)+1; });
+        const maxDup = Math.max(0, ...Object.values(nc2));
+        const oldest2   = catches.reduce((m,c) => Math.min(m, new Date(c.timestamp).getTime()), Infinity);
+        const daysSince = isFinite(oldest2) ? Math.floor((Date.now()-oldest2)/86400000) : 0;
+        const ownedN    = new Set(catches.map(c => (c.catchName||'').toLowerCase()));
+
+        const defs = [
+            // Captures
+            { icon:'🎣', name:'PREMIER PAS',     desc:'Première capture',         prog: Math.min(total,1),    max:1,   done: total >= 1 },
+            { icon:'💼', name:'CHASSEUR',         desc:'10 captures',              prog: Math.min(total,10),   max:10,  done: total >= 10 },
+            { icon:'🏹', name:'DRESSEUR',         desc:'100 captures',             prog: Math.min(total,100),  max:100, done: total >= 100 },
+            { icon:'⚔️', name:'VÉTÉRAN',          desc:'500 captures',             prog: Math.min(total,500),  max:500, done: total >= 500 },
+            { icon:'🏆', name:'LÉGENDE',          desc:'1000 captures',            prog: Math.min(total,1000), max:1000,done: total >= 1000 },
+            // Pokédex
+            { icon:'📖', name:'CURIEUX',          desc:'Pokédex à 10%',            prog: Math.min(completion,10),  max:10,  done: completion >= 10 },
+            { icon:'📚', name:'COLLECTIONNEUR',   desc:'Pokédex à 25%',            prog: Math.min(completion,25),  max:25,  done: completion >= 25 },
+            { icon:'🗂️', name:'ENCYCLOPÉDIE',     desc:'Pokédex à 50%',            prog: Math.min(completion,50),  max:50,  done: completion >= 50 },
+            { icon:'🌟', name:'MAÎTRE',           desc:'Pokédex à 100%',           prog: Math.min(completion,100), max:100, done: completion >= 100 },
+            // Raretés
+            { icon:'💎', name:'RARE TROUVÉ',      desc:'1er Rare capturé',         prog: Math.min(rarityCount.Rare,1),      max:1, done: rarityCount.Rare >= 1 },
+            { icon:'🔮', name:'ÉPIQUE',           desc:'1er Épique capturé',       prog: Math.min(rarityCount.Epic,1),      max:1, done: rarityCount.Epic >= 1 },
+            { icon:'👑', name:'LÉGENDAIRE',       desc:'1er Légendaire capturé',   prog: Math.min(rarityCount.Legendary,1), max:1, done: rarityCount.Legendary >= 1 },
+            { icon:'✨', name:'CHASSEUR LÉGEND.', desc:'5 Légendaires',            prog: Math.min(rarityCount.Legendary,5), max:5, done: rarityCount.Legendary >= 5 },
+            { icon:'🔮', name:'ÉPICURIEN',        desc:'5 Épiques capturés',       prog: Math.min(rarityCount.Epic,5),      max:5, done: rarityCount.Epic >= 5 },
+            { icon:'🌩️', name:'DIX LÉGENDES',     desc:'10 Légendaires capturés',  prog: Math.min(rarityCount.Legendary,10),max:10,done: rarityCount.Legendary >= 10 },
+            { icon:'🗑️', name:'ROI DÉCHETS',      desc:'20 Junk capturés',         prog: Math.min(rarityCount.Junk,20),     max:20,done: rarityCount.Junk >= 20 },
+            // Valeur
+            { icon:'💰', name:'PETIT ÉPARGNANT',  desc:'Valeur totale 1000₽',      prog: Math.min(totalVal,1000),   max:1000,   done: totalVal >= 1000 },
+            { icon:'💵', name:'INVESTISSEUR',     desc:'Valeur totale 10000₽',     prog: Math.min(totalVal,10000),  max:10000,  done: totalVal >= 10000 },
+            { icon:'🏦', name:'MILLIONNAIRE',     desc:'Valeur totale 100000₽',    prog: Math.min(totalVal,100000), max:100000, done: totalVal >= 100000 },
+            { icon:'💫', name:'GROS LOT',         desc:'1 pokemon > 500₽',         prog: Math.min(bestVal,500),     max:500,    done: bestVal >= 500 },
+            { icon:'💎', name:'VALEUR ULTIME',    desc:'1 pokemon à 1000₽',        prog: Math.min(bestVal,1000),    max:1000,   done: bestVal >= 1000 },
+            // Échanges
+            { icon:'🤝', name:'PREMIER ÉCHANGE',  desc:'1 échange accepté',        prog: Math.min(tradesAccepted,1),  max:1,  done: tradesAccepted >= 1 },
+            { icon:'🔄', name:'ÉCHANGEUR',        desc:'10 échanges acceptés',     prog: Math.min(tradesAccepted,10), max:10, done: tradesAccepted >= 10 },
+            { icon:'🕊️', name:'DIPLOMATE',        desc:'25 échanges acceptés',     prog: Math.min(tradesAccepted,25), max:25, done: tradesAccepted >= 25 },
+            { icon:'🌐', name:'AMBASSADEUR',      desc:'50 échanges acceptés',     prog: Math.min(tradesAccepted,50), max:50, done: tradesAccepted >= 50 },
+            // Shinies
+            { icon:'🌟', name:'PREMIER shiny',    desc:'1er shiny capturé',        prog: Math.min(shinyCount,1),  max:1,  done: shinyCount >= 1 },
+            { icon:'⭐', name:'5 shiny',        desc:'5 shiny capturés',       prog: Math.min(shinyCount,5),  max:5,  done: shinyCount >= 5 },
+            { icon:'✨', name:'10 shiny',   desc:'10 shiny capturés',      prog: Math.min(shinyCount,10), max:10, done: shinyCount >= 10 },
+            { icon:'💥', name:'20 shiny',       desc:'20 shiny capturés',      prog: Math.min(shinyCount,20), max:20, done: shinyCount >= 20 },
+            { icon:'🌠', name:'30 shiny',       desc:'30 shiny capturés',      prog: Math.min(shinyCount,30), max:30, done: shinyCount >= 30 },
+            { icon:'🌌', name:'40 shiny',       desc:'40 shiny capturés',      prog: Math.min(shinyCount,40), max:40, done: shinyCount >= 40 },
+            { icon:'💫', name:'COMPLET shiny',    desc:'Les 41 shiny (41/41)',   prog: Math.min(shinyCount,41), max:41, done: shinyCount >= 41 },
+            // Formes spéciales
+            { icon:'🔰', name:'MÉGA POWER',       desc:'1er Méga capturé',         prog: Math.min(megaCount,1),   max:1,  done: megaCount >= 1 },
+            { icon:'⚡', name:'5 MÉGAS',          desc:'5 Mégas capturés',         prog: Math.min(megaCount,5),   max:5,  done: megaCount >= 5 },
+            { icon:'🔥', name:'10 MÉGAS',         desc:'10 Mégas capturés',        prog: Math.min(megaCount,10),  max:10, done: megaCount >= 10 },
+            { icon:'👑', name:'MAÎTRE MÉGA',      desc:'15 Mégas capturés',        prog: Math.min(megaCount,15),  max:15, done: megaCount >= 15 },
+            { icon:'🏔️', name:'GIGAMAX',          desc:'1er Gigamax capturé',      prog: Math.min(gigasCount,1),  max:1,  done: gigasCount >= 1 },
+            // Secrets (affichés seulement si débloqués grâce au filter(a=>a.done) du profil)
+            { icon:'🌊', name:'LÉVIATOR CHROMATIQUE', desc:'Léviator shiny',       prog:ownedN.has('léviator shiny')?1:0,  max:1, done:ownedN.has('léviator shiny') },
+            { icon:'🌸', name:'MEW CHROMATIQUE',      desc:'Mew shiny',            prog:ownedN.has('mew shiny')?1:0,       max:1, done:ownedN.has('mew shiny') },
+            { icon:'🦅', name:'TRIO LÉGENDAIRE ✨',   desc:'Artikodin + Électhor + Sulfura shiny', prog:['artikodin shiny','électhor shiny','sulfura shiny'].filter(n=>ownedN.has(n)).length, max:3, done:['artikodin shiny','électhor shiny','sulfura shiny'].every(n=>ownedN.has(n)) },
+            { icon:'🔴', name:'STARTERS GEN1 ✨', desc:'Florizarre + Dracaufeu + Tortank shiny',    prog:['florizarre shiny','dracaufeu shiny','tortank shiny'].filter(n=>ownedN.has(n)).length,    max:3, done:['florizarre shiny','dracaufeu shiny','tortank shiny'].every(n=>ownedN.has(n)) },
+            { icon:'🌕', name:'STARTERS GEN2 ✨', desc:'Méganium + Typhlosion + Aligatueur shiny',  prog:['méganium shiny','typhlosion shiny','aligatueur shiny'].filter(n=>ownedN.has(n)).length,  max:3, done:['méganium shiny','typhlosion shiny','aligatueur shiny'].every(n=>ownedN.has(n)) },
+            { icon:'🌿', name:'STARTERS GEN3 ✨', desc:'Jungko + Braségali + Laggron shiny',        prog:['jungko shiny','braségali shiny','laggron shiny'].filter(n=>ownedN.has(n)).length,        max:3, done:['jungko shiny','braségali shiny','laggron shiny'].every(n=>ownedN.has(n)) },
+            { icon:'💎', name:'STARTERS GEN4 ✨', desc:'Torterra + Simiabraz + Pingoléon shiny',    prog:['torterra shiny','simiabraz shiny','pingoléon shiny'].filter(n=>ownedN.has(n)).length,    max:3, done:['torterra shiny','simiabraz shiny','pingoléon shiny'].every(n=>ownedN.has(n)) },
+            { icon:'🌑', name:'STARTERS GEN5 ✨', desc:'Majaspic + Roitiflam + Clamiral shiny',     prog:['majaspic shiny','roitiflam shiny','clamiral shiny'].filter(n=>ownedN.has(n)).length,     max:3, done:['majaspic shiny','roitiflam shiny','clamiral shiny'].every(n=>ownedN.has(n)) },
+            { icon:'🌊', name:'STARTERS GEN6 ✨', desc:'Blindépique + Goupelin + Amphinobi shiny',  prog:['blindépique shiny','goupelin shiny','amphinobi shiny'].filter(n=>ownedN.has(n)).length,  max:3, done:['blindépique shiny','goupelin shiny','amphinobi shiny'].every(n=>ownedN.has(n)) },
+            { icon:'🌺', name:'STARTERS GEN7 ✨', desc:'Archéduc + Félinferno + Oratoria shiny',    prog:['archéduc shiny','félinferno shiny','oratoria shiny'].filter(n=>ownedN.has(n)).length,    max:3, done:['archéduc shiny','félinferno shiny','oratoria shiny'].every(n=>ownedN.has(n)) },
+            { icon:'⚔️', name:'STARTERS GEN8 ✨', desc:'Gorythmic + Pyrobut + Lézargus shiny',      prog:['gorythmic shiny','pyrobut shiny','lézargus shiny'].filter(n=>ownedN.has(n)).length,      max:3, done:['gorythmic shiny','pyrobut shiny','lézargus shiny'].every(n=>ownedN.has(n)) },
+            { icon:'🐟', name:'MAGICARPE !!',     desc:'Capturer le Magicarpe',    prog:catches.some(c=>c.catchName==='Magicarpe')?1:0, max:1, done:catches.some(c=>c.catchName==='Magicarpe') },
+            { icon:'🧬', name:'ADN MODIFIÉ',      desc:'Capturer Mewtwo',          prog:catches.some(c=>c.catchName==='Mewtwo')?1:0,    max:1, done:catches.some(c=>c.catchName==='Mewtwo') },
+            { icon:'🏋️', name:'MASTODONTE',       desc:'Capturer un pokemon ≥ 999kg', prog: catches.some(c=>(c.catchWeight||0)>=999.9)?1:0, max:1, done: catches.some(c=>(c.catchWeight||0)>=999.9) },
+            { icon:'🪶', name:'POIDS PLUME',      desc:'Capturer un pokemon ≤ 0.1kg', prog: catches.some(c=>(c.catchWeight||0)<=0.1&&(c.catchWeight||0)>0)?1:0, max:1, done: catches.some(c=>(c.catchWeight||0)<=0.1&&(c.catchWeight||0)>0) },
+            // Doublons
+            { icon:'👯', name:'DOUBLON',          desc:'2× le même Pokémon',       prog: Math.min(maxDup,2), max:2, done: maxDup >= 2 },
+            { icon:'🎲', name:'QUINTUPLE',        desc:'5× le même Pokémon',       prog: Math.min(maxDup,5), max:5, done: maxDup >= 5 },
+            // Ancienneté
+            { icon:'⏰', name:'FIDÈLE',           desc:'Jouer depuis 30+ jours',   prog: Math.min(daysSince,30), max:30, done: daysSince >= 30 },
+            { icon:'🕰️', name:'VIEUX BRISCARD',  desc:'Jouer depuis 90+ jours',   prog: Math.min(daysSince,90), max:90, done: daysSince >= 90 },
+        ];
+
+        // ── Starters par génération ─────────────────────────────────────────────
+        const starterSets = [
+            { id:'start_g1', icon:'🔴', name:'STARTERS GEN 1', pokes:['Bulbizarre','Herbizarre','Florizarre','Salamèche','Reptincel','Dracaufeu','Carapuce','Carabaffe','Tortank'] },
+            { id:'start_g2', icon:'🌕', name:'STARTERS GEN 2', pokes:['Germignon','Macronium','Méganium','Hericendre','Feurisson','Typhlosion','Kaiminus','Crocrodil','Aligatueur'] },
+            { id:'start_g3', icon:'🌿', name:'STARTERS GEN 3', pokes:['Arcko','Massko','Jungko','Poussifeu','Galifeu','Braségali','Gobou','Flobio','Laggron'] },
+            { id:'start_g4', icon:'💎', name:'STARTERS GEN 4', pokes:['Tortipouss','Boskara','Torterra','Ouisticram','Chimpenfeu','Simiabraz','Tiplouf','Prinplouf','Pingoléon'] },
+            { id:'start_g5', icon:'🌑', name:'STARTERS GEN 5', pokes:['Vipélierre','Lianaja','Majaspic','Gruikui','Goinfrex','Roitiflam','Moustillon','Mateloutre','Clamiral'] },
+            { id:'start_g6', icon:'🌊', name:'STARTERS GEN 6', pokes:['Marisson','Boguérisse','Blindépique','Feunnec','Roussil','Goupelin','Grenousse','Croâporal','Amphinobi'] },
+            { id:'start_g7', icon:'🌺', name:'STARTERS GEN 7', pokes:['Brindibou','Efflèche','Archéduc','Flamiaou','Matoufeu','Félinferno','Otaquin','Otarlette','Oratoria'] },
+            { id:'start_g8', icon:'⚔️', name:'STARTERS GEN 8', pokes:['Ouistempo','Badabouin','Gorythmic','Flambino','Lapyro','Pyrobut','Larméléon','Arrozard','Lézargus'] },
+        ];
+        starterSets.forEach(({ icon, name, pokes }) => {
+            const have = pokes.filter(p => ownedN.has(p.toLowerCase())).length;
+            defs.push({ icon, name, desc: have + ' / 9 starters capturés', prog: have, max: 9, done: have === 9 });
+        });
+        const allStarterNamesAll = ['bulbizarre','herbizarre','florizarre','salamèche','reptincel','dracaufeu','carapuce','carabaffe','tortank','germignon','macronium','méganium','hericendre','feurisson','typhlosion','kaiminus','crocrodil','aligatueur','arcko','massko','jungko','poussifeu','galifeu','braségali','gobou','flobio','laggron','tortipouss','boskara','torterra','ouisticram','chimpenfeu','simiabraz','tiplouf','prinplouf','pingoléon','vipélierre','lianaja','majaspic','gruikui','goinfrex','roitiflam','moustillon','mateloutre','clamiral','marisson','boguérisse','blindépique','feunnec','roussil','goupelin','grenousse','croâporal','amphinobi','brindibou','efflèche','archéduc','flamiaou','matoufeu','félinferno','otaquin','otarlette','oratoria','ouistempo','badabouin','gorythmic','flambino','lapyro','pyrobut','larméléon','arrozard','lézargus'];
+        const haveAll = allStarterNamesAll.filter(n => ownedN.has(n)).length;
+        defs.push({ icon:'🏅', name:'MAÎTRE STARTERS', desc:'Les 72 starters des 8 gens', prog: haveAll, max: 72, done: haveAll === 72 });
+
+        // ── Achievements par génération ──────────────────────────────────────────
+        const genNames = ['GEN 1', 'GEN 2', 'GEN 3', 'GEN 4', 'GEN 5', 'GEN 6', 'GEN 7', 'GEN 8', 'BONUS'];
+        const genIcons = ['🔴', '🌕', '🌿', '💫', '🌑', '🌊', '🌺', '⚔️', '🌀'];
+
+        if (allPokemon.length > 0) {
+            const catchedNames = new Set(catches.map(c => c.catchName.toLowerCase()));
+
+            for (let i = 1; i <= BORNES.length + 1; i++) {
+                const slice   = getGenSlice(i);
+                if (slice.length === 0) continue;
+                const owned   = slice.filter(p => catchedNames.has(p.name.toLowerCase())).length;
+                const total_g = slice.length;
+                const pct_g   = Math.round(owned / total_g * 100);
+                const label   = i <= BORNES.length ? `GEN ${i}` : 'BONUS';
+                const icon    = genIcons[i-1] || '🌀';
+
+                // 25%, 50%, 100% de complétion par gen
+                // Gen BONUS = 1 seul pokemon → palier unique mystère
+                const isBonus = i > BORNES.length;
+                const milestones = isBonus
+                    ? [{ pct: 100, suffix: '??', emoji: '❓', name: 'UN POKEMON ??', desc: 'Trouver le pokemon étrange' }]
+                    : [
+                        { pct: 25,  suffix: '25%',     emoji: '🥉' },
+                        { pct: 50,  suffix: '50%',     emoji: '🥈' },
+                        { pct: 100, suffix: 'COMPLÈTE', emoji: '🥇' },
+                    ];
+                let prevUnlocked = true;
+                milestones.forEach(m => {
+                    if (!prevUnlocked) return; // cacher si le palier précédent n'est pas débloqué
+                    const done = pct_g >= m.pct;
+                    defs.push({
+                        icon: m.emoji,
+                        name: m.name || `${label} ${m.suffix}`,
+                        desc: m.desc || `${owned}/${total_g} Pokémon ${label}`,
+                        prog: Math.min(pct_g, m.pct),
+                        max: m.pct,
+                        done
+                    });
+                    if (!done) prevUnlocked = false; // bloquer les suivants
+                });
+            }
+        }
+
+        // Trier : débloqués d'abord, puis par progression
+        return defs.sort((a, b) => {
+            if (a.done !== b.done) return b.done - a.done;
+            return (b.prog/b.max) - (a.prog/a.max);
+        });
+    }
+
+    function renderAchievements(catches, profileAchievMap) {
+        const el = document.getElementById('profileAchievements');
+        if (!el) return;
+        const defs     = getAllAchievDefs();
+        const unlocked = defs.filter(a => a.id in profileAchievMap);
+        el.innerHTML = '';
+        if (unlocked.length === 0) {
+            el.innerHTML = '<div style="font-family:var(--pf);font-size:9px;color:#444;padding:8px">AUCUN SUCCÈS DÉBLOQUÉ</div>';
+            return;
+        }
+        // Trier par date de déverrouillage (plus récent en premier)
+        unlocked.sort((a, b) => new Date(profileAchievMap[b.id]||0) - new Date(profileAchievMap[a.id]||0));
+        unlocked.forEach(a => {
+            const div = document.createElement('div');
+            div.className = 'achievement unlocked';
+            const dateStr = profileAchievMap[a.id]
+                ? new Date(profileAchievMap[a.id]).toLocaleDateString('fr-FR') : '';
+            div.innerHTML = `
+                <div class="achievement-tooltip">${a.desc}${dateStr ? ' • ' + dateStr : ''}</div>
+                <div class="achievement-icon">${a.icon}</div>
+                <div class="achievement-info">
+                    <div class="achievement-name">${a.name}</div>
+                </div>
+            `;
+            el.appendChild(div);
+        });
+    }
+
+    function closeProfile(e) { if (e.target===document.getElementById('profileOverlay')) closeProfileBtn(); }
+    function closeProfileBtn() { document.getElementById('profileOverlay').classList.remove('open'); }
+
+    // ─── POKEMON MODAL ─────────────────────────────────────────────────────────
+    function openPokeModal(name, rarity, catchData) {
+        // Nettoyer les éventuels boutons toggle précédents
+        document.querySelectorAll('.poke-modal .trade-toggle-row').forEach(e => e.remove());
+        const found = allPokemon.find(p => p.name.toLowerCase() === name.toLowerCase());
+
+        let fileName = catchData ? (catchData.sprite || catchData.SpritePath || `${name}.gif`) : (found ? (found.SpritePath || `${name}.gif`) : `${name}.gif`);
+        const spriteUrl = cldUrl(fileName);
+
+        // ✅ FIX : précharge dans un objet Image invisible avant d'afficher
+        const modalImg        = document.getElementById('pokeModalImg');
+        const spriteContainer = modalImg.parentElement;
+
+        modalImg.style.display = 'none';
+        let loader = spriteContainer.querySelector('.modal-loader');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.className = 'modal-loader';
+            spriteContainer.appendChild(loader);
+        }
+        loader.style.display = 'block';
+
+        const tempImg    = new Image();
+        tempImg.onload   = function() {
+            modalImg.src              = this.src;
+            modalImg.style.display    = '';
+            modalImg.style.opacity    = '0';
+            modalImg.style.transition = 'opacity 0.25s';
+            loader.style.display      = 'none';
+            requestAnimationFrame(() => { modalImg.style.opacity = '1'; });
+        };
+        tempImg.onerror  = function() {
+            modalImg.src           = DEFAULT_IMG;
+            modalImg.style.display = '';
+            modalImg.style.opacity = '1';
+            loader.style.display   = 'none';
+        };
+        tempImg.src = spriteUrl;
+
+        document.getElementById('pokeModalTitle').innerText = name.toUpperCase();
+        document.getElementById('pokeModalName').className  = `poke-modal-name rarity-${rarity}`;
+        document.getElementById('pokeModalName').innerText  = found ? (found.FullName || name) : name;
+        document.getElementById('pokeModalDesc').innerText  = found ? (found.Description || '???') : '???';
+
+        const baseVal    = found ? (found.BaseValue||0)  : (catchData ? catchData.catchValue  : 0);
+        const baseWeight = found ? (found.BaseWeight||0) : (catchData ? catchData.catchWeight : 0);
+        document.getElementById('pokeModalStats').innerHTML = `
+            <div class="poke-modal-stat"><div class="poke-modal-stat-label">VALEUR</div><div class="poke-modal-stat-value rarity-${rarity}">${baseVal}₽</div></div>
+            <div class="poke-modal-stat"><div class="poke-modal-stat-label">POIDS</div><div class="poke-modal-stat-value" style="color:#aaa">${baseWeight} kg</div></div>
+            <div class="poke-modal-stat"><div class="poke-modal-stat-label">RARETÉ</div><div class="poke-modal-stat-value rarity-${rarity}">${rarity.toUpperCase()}</div></div>
+        `;
+
+        // Bouton toggle refus d'échange si c'est MON pokemon
+        const myVersions = currentUser
+            ? userCatches.filter(c =>
+                c.catchName.toLowerCase() === name.toLowerCase() &&
+                c.userName && c.userName.toLowerCase() === currentUser.username.toLowerCase()
+              )
+            : [];
+        if (myVersions.length > 0 && catchData && catchData._id) {
+            const isRefused = catchData.tradeRefused || false;
+            const toggleBtn = document.createElement('div');
+            toggleBtn.className = 'trade-toggle-row';
+            toggleBtn.style.cssText = 'padding:10px 14px;border-bottom:1px solid #2a0000;display:flex;align-items:center;gap:10px;';
+            toggleBtn.innerHTML = `
+                <span style="font-size:9px;color:#555;letter-spacing:0.5px;flex:1">ÉCHANGES SUR CE POKÉMON :</span>
+                <button id="tradeToggleBtn" class="btn-toggle-trade ${isRefused ? 'closed' : 'open'}"
+                        onclick="toggleTradeRefused('${catchData._id}', this)">
+                    ${isRefused ? '🔒 REFUSÉ' : '✅ AUTORISÉ'}
+                </button>
+            `;
+            document.querySelector('.poke-modal').insertBefore(
+                toggleBtn,
+                document.getElementById('pokeModalFooter')
+            );
+        }
+
+        const footerEl       = document.getElementById('pokeModalFooter');
+        const catchersOfThis = userCatches.filter(c => c.catchName.toLowerCase() === name.toLowerCase());
+        if (isAllMode && catchersOfThis.length > 0) {
+            const byUser = {};
+            catchersOfThis.forEach(c => { if (!byUser[c.userName]) byUser[c.userName]=[]; byUser[c.userName].push(c); });
+            footerEl.style.textAlign = 'left';
+            footerEl.style.padding   = '10px 14px';
+            let html = `<div style="font-size:9px;color:#555;margin-bottom:6px;letter-spacing:0.5px;">CAPTURÉ PAR :</div>`;
+            Object.entries(byUser).forEach(([user, caps]) => {
+                caps.forEach(c => {
+                    const d = new Date(c.timestamp);
+                    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;">
+                        <span style="font-size:11px;color:#fff">${user}</span>
+                        <span style="font-size:9px;color:#555">${d.toLocaleDateString('fr-FR')} ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span>
+                        <span style="font-size:11px;color:var(--rarity-legendary)">${c.catchValue||0}₽</span>
+                    </div>`;
+                });
+            });
+            footerEl.innerHTML = html;
+        } else if (catchersOfThis.length > 0) {
+            footerEl.style.textAlign = 'center';
+            footerEl.innerHTML = `CAPTURÉ ${catchersOfThis.length} FOIS`;
+        } else {
+            footerEl.innerHTML = '';
+        }
+
+        document.getElementById('pokeModalOverlay').classList.add('open');
+    }
+
+    function closePokeModal(e)   { if (e.target===document.getElementById('pokeModalOverlay')) closePokeModalBtn(); }
+    function closePokeModalBtn() { document.getElementById('pokeModalOverlay').classList.remove('open'); }
+
+    // ─── PAGINATION ────────────────────────────────────────────────────────────
+    function onPageSizeChange() {
+        PAGE_SIZE = parseInt(document.getElementById('pageSizeSelect').value);
+        localStorage.setItem('pageSize', PAGE_SIZE);
+        currentPage = 0;
+        renderDisplay();
+    }
+
+    function changePage(dir) {
+        currentPage += dir;
+        document.getElementById('mainContainer').scrollIntoView({ behavior: 'smooth' });
+        renderDisplay();
+    }
+
+    // ─── AUTOCOMPLETE BARRE PRINCIPALE ──────────────────────────────────────────
+    let mainAutoIndex = -1;
+
+    function onMainSearch() {
+        mainAutoIndex = -1;
+        showMainAutocomplete();
+    }
+
+    function showMainAutocomplete() {
+        const input   = document.getElementById('usernameInput');
+        const list    = document.getElementById('mainAutocompleteList');
+        const val     = input.value.trim().toLowerCase();
+
+        if (!val || leaderboardData.length === 0) {
+            list.style.display = 'none';
+            return;
+        }
+
+        const matches = leaderboardData
+            .filter(u => u.userName.toLowerCase().includes(val))
+            .sort((a, b) => (b.totalValue||0) - (a.totalValue||0))
+            .slice(0, 6);
+
+        if (matches.length === 0) { list.style.display = 'none'; return; }
+
+        list.innerHTML = '';
+        matches.forEach((u, i) => {
+            const spriteUrl   = cldUrl(u.bestCatchSprite || `${u.bestCatchName}.gif`);
+            const name        = u.userName;
+            const idx         = name.toLowerCase().indexOf(val);
+            const highlighted = idx >= 0
+                ? name.slice(0, idx) +
+                  `<span class="lb-autocomplete-highlight">${name.slice(idx, idx + val.length)}</span>` +
+                  name.slice(idx + val.length)
+                : name;
+
+            const item = document.createElement('div');
+            item.className   = 'lb-autocomplete-item';
+            item.dataset.idx = i;
+            item.innerHTML   = `
+                <img src="${spriteUrl}" onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                <span>${highlighted}</span>
+                <span style="color:#555;font-size:8px;margin-left:auto">${u.totalValue||0}₽</span>
+            `;
+            item.onmousedown = (e) => {
+                e.preventDefault();
+                selectMainAutocomplete(u.userName);
+            };
+            list.appendChild(item);
+        });
+
+        list.style.display = 'block';
+        list.style.width   = input.offsetWidth + 'px';
+    }
+
+    function selectMainAutocomplete(name) {
+        document.getElementById('usernameInput').value = name;
+        closeMainAutocomplete();
+        fetchAllData();
+    }
+
+    function closeMainAutocomplete() {
+        const list = document.getElementById('mainAutocompleteList');
+        if (list) list.style.display = 'none';
+        mainAutoIndex = -1;
+    }
+
+    function onMainSearchKey(e) {
+        const list  = document.getElementById('mainAutocompleteList');
+        const items = list.querySelectorAll('.lb-autocomplete-item');
+        if (!items.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            mainAutoIndex = Math.min(mainAutoIndex + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            mainAutoIndex = Math.max(mainAutoIndex - 1, -1);
+        } else if (e.key === 'Enter' && mainAutoIndex >= 0) {
+            e.preventDefault();
+            selectMainAutocomplete(items[mainAutoIndex].querySelector('span').textContent);
+            return;
+        } else if (e.key === 'Escape') {
+            closeMainAutocomplete();
+            return;
+        }
+
+        items.forEach((item, i) => {
+            item.classList.toggle('active', i === mainAutoIndex);
+        });
+    }
+
+    // ─── AUTOCOMPLETE LEADERBOARD ───────────────────────────────────────────────
+    let lbAutoIndex = -1;
+
+    function onLbSearch() {
+        lbAutoIndex = -1;
+        renderLeaderboard();
+        showLbAutocomplete();
+    }
+
+    function showLbAutocomplete() {
+        const input  = document.getElementById('lbSearchInput');
+        const list   = document.getElementById('lbAutocompleteList');
+        const val    = input.value.trim().toLowerCase();
+
+        if (!val || leaderboardData.length === 0) {
+            list.style.display = 'none';
+            return;
+        }
+
+        const matches = leaderboardData
+            .filter(u => u.userName.toLowerCase().includes(val))
+            .sort((a, b) => (b.totalValue||0) - (a.totalValue||0))
+            .slice(0, 6);
+
+        if (matches.length === 0) { list.style.display = 'none'; return; }
+
+        list.innerHTML = '';
+        matches.forEach((u, i) => {
+            const spriteUrl = cldUrl(u.bestCatchSprite || `${u.bestCatchName}.gif`);
+            const name      = u.userName;
+            // Mettre en surbrillance la partie qui correspond
+            const idx       = name.toLowerCase().indexOf(val);
+            const highlighted = idx >= 0
+                ? name.slice(0, idx) +
+                  `<span class="lb-autocomplete-highlight">${name.slice(idx, idx + val.length)}</span>` +
+                  name.slice(idx + val.length)
+                : name;
+
+            const item = document.createElement('div');
+            item.className   = 'lb-autocomplete-item';
+            item.dataset.idx = i;
+            item.innerHTML   = `
+                <img src="${spriteUrl}" onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                <span>${highlighted}</span>
+                <span style="color:#555;font-size:8px;margin-left:auto">${u.totalValue||0}₽</span>
+            `;
+            item.onmousedown = (e) => {
+                e.preventDefault();
+                selectLbAutocomplete(u.userName);
+            };
+            list.appendChild(item);
+        });
+
+        list.style.display = 'block';
+        // Même largeur que l'input
+        list.style.width = input.offsetWidth + 'px';
+    }
+
+    function selectLbAutocomplete(name) {
+        const input = document.getElementById('lbSearchInput');
+        input.value = name;
+        document.getElementById('lbAutocompleteList').style.display = 'none';
+        lbAutoIndex = -1;
+        renderLeaderboard();
+    }
+
+    function onLbSearchKey(e) {
+        const list  = document.getElementById('lbAutocompleteList');
+        const items = list.querySelectorAll('.lb-autocomplete-item');
+        if (!items.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            lbAutoIndex = Math.min(lbAutoIndex + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            lbAutoIndex = Math.max(lbAutoIndex - 1, -1);
+        } else if (e.key === 'Enter' && lbAutoIndex >= 0) {
+            e.preventDefault();
+            selectLbAutocomplete(items[lbAutoIndex].querySelector('span').textContent);
+            return;
+        } else if (e.key === 'Escape') {
+            list.style.display = 'none';
+            lbAutoIndex = -1;
+            return;
+        }
+
+        items.forEach((item, i) => {
+            item.classList.toggle('active', i === lbAutoIndex);
+        });
+    }
+
+    // Fermer la liste si on clique ailleurs
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.lb-autocomplete-wrap')) {
+            const list = document.getElementById('lbAutocompleteList');
+            if (list) list.style.display = 'none';
+            lbAutoIndex = -1;
+        }
+        if (!e.target.closest('.search-autocomplete-wrap')) {
+            closeMainAutocomplete();
+        }
+    });
+
+    // Précharger catches-all pour achievements et globalBestValue
+    fetch(`${API}/catches-all`).then(r => r.json()).then(data => {
+        window._allCatchesCache = data.catches || [];
+        globalBestValuePerName  = {};
+        globalWorstValuePerName = {};
+        const ownerSets = {};
+        window._allCatchesCache.forEach(c => {
+            const name = (c.catchName||'').toLowerCase();
+            const val  = c.catchValue || 0;
+            if (!globalBestValuePerName[name]  || val > globalBestValuePerName[name].val)
+                globalBestValuePerName[name]  = { val, id: String(c._id), userName: c.userName };
+            if (!globalWorstValuePerName[name] || val < globalWorstValuePerName[name].val)
+                globalWorstValuePerName[name] = { val, id: String(c._id), userName: c.userName };
+            if (!ownerSets[name]) ownerSets[name] = new Set();
+            ownerSets[name].add((c.userName||'').toLowerCase());
+        });
+        Object.keys(globalBestValuePerName).forEach(name => {
+            const count = ownerSets[name] ? ownerSets[name].size : 1;
+            globalBestValuePerName[name].ownerCount  = count;
+            globalWorstValuePerName[name].ownerCount = count;
+        });
+    }).catch(() => {});
+
+    // Précharger leaderboard pour l'autocomplete
+    fetch(`${API}/leaderboard`).then(r => r.json()).then(data => { leaderboardData = data; }).catch(() => {});
+
+
+    // ─── VÉRIFICATION ÉCHANGES EN ATTENTE ──────────────────────────────────────
+    async function checkPendingTrades() {
+        if (!currentUser) {
+            document.getElementById('btn-trade').classList.remove('trade-pending');
+            return;
+        }
+        try {
+            const res  = await fetch(`${API}/trade/pending/${currentUser.username}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt')}` }
+            });
+            const data = await res.json();
+            const hasPending = data.received && data.received.length > 0;
+            document.getElementById('btn-trade').classList.toggle('trade-pending', hasPending);
+        } catch {}
+    }
+
+    initAuth();
+
+    // ─── ÉCHANGES ──────────────────────────────────────────────────────────────
+    let tradeTarget     = null;
+    let tradeSelectedId = null;
+
+    // ✅ FIX : tradeSprite utilise cldUrl partout
+    function tradeSprite(sprite, name) {
+        if (!sprite || sprite === 'default.png') return cldUrl(`${name}.gif`);
+        if (sprite.includes('PKmon/') || sprite.startsWith('v1')) return `${CDN_GIF}/${sprite}`;
+        return cldUrl(sprite);
+    }
+
+    function openTradeModal(toCatchId, toCatchName, toSprite, toValue, toUser) {
+        if (!currentUser) { showToast('Connecte-toi avec Twitch pour proposer un échange !', 'error'); return; }
+        if (currentUser.username.toLowerCase() === toUser.toLowerCase()) { showToast('Tu ne peux pas échanger avec toi-même !', 'error'); return; }
+
+        tradeTarget     = { catchId: toCatchId, catchName: toCatchName, sprite: toSprite, value: toValue, toUser };
+        tradeSelectedId = null;
+
+        document.getElementById('tradeTitle').innerText       = `ÉCHANGE AVEC ${toUser.toUpperCase()}`;
+        document.getElementById('tradeTheirName').innerText   = toCatchName;
+        document.getElementById('tradeTheirVal').innerHTML    = `${toValue}₽`;
+        document.getElementById('tradeTheirSprite').src       = tradeSprite(toSprite, toCatchName);
+        document.getElementById('tradePreview').style.display = 'none';
+        document.getElementById('tradeConfirmBtn').disabled   = true;
+        document.getElementById('tradeSearchInput').value     = '';
+
+        const myCards = document.getElementById('tradeMyCards');
+        myCards.innerHTML = '<div style="font-size:9px;color:#444;padding:10px;">Chargement...</div>';
+
+        fetch(`${API}/catches/${currentUser.username}`)
+            .then(r => r.json())
+            .then(data => {
+                const catches = data.catches || [];
+                if (catches.length === 0) {
+                    myCards.innerHTML = '<div class="trade-empty">AUCUNE CAPTURE DISPONIBLE</div>';
+                    tradeCardsCache = [];
+                    return;
+                }
+                const grouped = {};
+                catches.forEach(c => {
+                    const key = c.catchName.toLowerCase();
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(c);
+                });
+                tradeCardsCache = Object.values(grouped).sort((a, b) => {
+                    const ra = RARITY_ORDER[a[0].catchRarity||'Common'] || 0;
+                    const rb = RARITY_ORDER[b[0].catchRarity||'Common'] || 0;
+                    if (rb !== ra) return rb - ra;
+                    return (b[0].catchValue||0) - (a[0].catchValue||0);
+                });
+                renderTradeCards('');
+            });
+
+        document.getElementById('tradeOverlay').classList.add('open');
+    }
+
+    function renderTradeCards(filter) {
+        const myCards = document.getElementById('tradeMyCards');
+        myCards.innerHTML = '';
+        const filtered = filter
+            ? tradeCardsCache.filter(copies => copies[0].catchName.toLowerCase().includes(filter))
+            : tradeCardsCache;
+        if (filtered.length === 0) { myCards.innerHTML = '<div class="trade-empty">AUCUN RÉSULTAT</div>'; return; }
+
+        filtered.forEach(copies => {
+            const c   = copies[0];
+            const div = document.createElement('div');
+            div.className = 'trade-card';
+            div.innerHTML = `
+                ${copies.length > 1 ? `<div class="trade-card-badge">x${copies.length}</div>` : ''}
+                <img src="${tradeSprite(c.sprite, c.catchName)}"
+                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                <div class="trade-card-name rarity-${c.catchRarity||'Common'}">${c.catchName}</div>
+                <div class="trade-card-val">${c.catchValue||0}₽</div>
+            `;
+            div.onclick = () => {
+                if (copies.length === 1) {
+                    document.querySelectorAll('.trade-card').forEach(d => d.classList.remove('selected'));
+                    div.classList.add('selected');
+                    selectMyCard(copies[0]);
+                } else {
+                    openCopyPicker(copies, div);
+                }
+            };
+            myCards.appendChild(div);
+        });
+    }
+
+    function filterTradeCards() {
+        const val = document.getElementById('tradeSearchInput').value.trim().toLowerCase();
+        renderTradeCards(val);
+    }
+
+    function selectMyCard(c) {
+        tradeSelectedId = c._id;
+        document.getElementById('tradePreviewMine').src            = tradeSprite(c.sprite, c.catchName);
+        document.getElementById('tradePreviewMineName').innerText   = c.catchName;
+        document.getElementById('tradePreviewTheirs').src           = tradeSprite(tradeTarget.sprite, tradeTarget.catchName);
+        document.getElementById('tradePreviewTheirsName').innerText = tradeTarget.catchName;
+        document.getElementById('tradePreview').style.display       = 'flex';
+        document.getElementById('tradeConfirmBtn').disabled          = false;
+    }
+
+    function openCopyPicker(copies, parentDiv) {
+        document.getElementById('copyPickerTitle').innerText = `${copies[0].catchName.toUpperCase()} — CHOISIR L'EXEMPLAIRE`;
+        const list = document.getElementById('copyPickerList');
+        list.innerHTML = '';
+        copies.forEach((c, i) => {
+            const d    = new Date(c.timestamp);
+            const date = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+            const item = document.createElement('div');
+            item.className = 'copy-picker-item';
+            item.innerHTML = `
+                <img src="${tradeSprite(c.sprite, c.catchName)}"
+                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                <div class="copy-picker-item-info">
+                    <div class="copy-picker-item-name rarity-${c.catchRarity||'Common'}">${c.catchName}</div>
+                    <div class="copy-picker-item-date">📅 ${date}</div>
+                    <div class="copy-picker-item-val">${c.catchValue||0}₽</div>
+                </div>
+                <div class="copy-picker-item-num">N°${i+1}</div>
+            `;
+            item.onclick = () => {
+                closeCopyPicker();
+                document.querySelectorAll('.trade-card').forEach(d => d.classList.remove('selected'));
+                if (parentDiv) parentDiv.classList.add('selected');
+                selectMyCard(c);
+            };
+            list.appendChild(item);
+        });
+        document.getElementById('copyPickerOverlay').classList.add('open');
+    }
+
+    function closeCopyPicker() { document.getElementById('copyPickerOverlay').classList.remove('open'); }
+
+    async function confirmTrade() {
+        if (!tradeSelectedId || !tradeTarget) return;
+        document.getElementById('tradeConfirmBtn').disabled = true;
+        try {
+            const res  = await fetch(`${API}/trade/propose`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jwt')}` },
+                body: JSON.stringify({ fromCatchId: tradeSelectedId, toCatchId: tradeTarget.catchId, toUser: tradeTarget.toUser })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeTradeModalBtn();
+                showToast(`Proposition envoyée à ${tradeTarget.toUser} !`, 'success');
+            } else {
+                showToast('Erreur : ' + (data.error || 'Inconnue'), 'error');
+                document.getElementById('tradeConfirmBtn').disabled = false;
+            }
+        } catch {
+            showToast('Erreur serveur', 'error');
+            document.getElementById('tradeConfirmBtn').disabled = false;
+        }
+    }
+
+    function closeTradeModal(e) { if (e.target === document.getElementById('tradeOverlay')) closeTradeModalBtn(); }
+    function closeTradeModalBtn() { document.getElementById('tradeOverlay').classList.remove('open'); }
+
+    // ─── Onglet ÉCHANGES ──────────────────────────────────────────────────────
+    let tradeView = 'public'; // 'mine' ou 'public'
+
+    async function renderTradeTab(view) {
+        if (view) tradeView = view;
+        const container = document.getElementById('mainContainer');
+        container.innerHTML = '';
+        document.getElementById('invControls').style.display = 'none';
+        document.getElementById('pagination').classList.remove('visible');
+
+        // Mettre à jour l'état actif des boutons du sous-menu
+        if (currentUser) {
+            document.getElementById('btn-trade-mine').classList.toggle('active', tradeView === 'mine');
+            document.getElementById('btn-trade-public').classList.toggle('active', tradeView === 'public');
+        }
+
+        // Vue publique — accessible à tous
+        if (!currentUser || tradeView === 'public') {
+            pubPokemonFilter = ''; pubUserFilter = ''; pubRarityFilter = '';
+            await renderPublicTrades(container, 0, '', '', '');
+            return;
+        }
+
+        setStatus('CHARGEMENT DES ÉCHANGES...');
+        try {
+            const res  = await fetch(`${API}/trade/pending/${currentUser.username}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt')}` }
+            });
+            const data = await res.json();
+            setStatus('');
+
+            const receivedSection = document.createElement('div');
+            receivedSection.className = 'trade-tab-section';
+            receivedSection.innerHTML = `<div class="trade-tab-title">&#8595; ÉCHANGES REÇUS (${data.received.length})</div>`;
+            if (data.received.length === 0) {
+                receivedSection.innerHTML += '<div class="trade-empty">AUCUN ÉCHANGE REÇU</div>';
+            } else {
+                data.received.forEach(t => receivedSection.appendChild(createTradeItem(t, 'received')));
+            }
+            container.appendChild(receivedSection);
+
+            const sentSection = document.createElement('div');
+            sentSection.className = 'trade-tab-section';
+            sentSection.innerHTML = `<div class="trade-tab-title">&#8593; ÉCHANGES ENVOYÉS (${data.sent.length})</div>`;
+            if (data.sent.length === 0) {
+                sentSection.innerHTML += '<div class="trade-empty">AUCUN ÉCHANGE ENVOYÉ</div>';
+            } else {
+                data.sent.forEach(t => sentSection.appendChild(createTradeItem(t, 'sent')));
+            }
+            container.appendChild(sentSection);
+
+            await renderHistorySection(container, 0);
+
+        } catch { setStatus('ERREUR CHARGEMENT ÉCHANGES.'); }
+    }
+
+    // ─── ÉCHANGES PUBLICS ──────────────────────────────────────────────────────
+    let pubRarityFilter  = '';
+    let pubPokemonFilter = '';
+    let pubUserFilter    = '';
+    let pubStatusFilter  = ''; // '' = tous, 'pending', 'accepted'
+
+    async function renderPublicTrades(container, page, pokemon, user, rarity) {
+        const old = document.getElementById('pubSection');
+        if (old) old.remove();
+
+        const skip = page * 20;
+        const params = new URLSearchParams();
+        if (pokemon) params.set('pokemon', pokemon);
+        if (user)    params.set('user', user);
+        if (rarity)  params.set('rarity', rarity);
+        params.set('skip', skip);
+
+        const pubSection = document.createElement('div');
+        pubSection.className = 'trade-tab-section';
+        pubSection.id        = 'pubSection';
+
+        // Header titre
+        const titleEl = document.createElement('div');
+        titleEl.className = 'trade-tab-title';
+        titleEl.innerHTML = '&#127760; MARCHÉ PUBLIC';
+        pubSection.appendChild(titleEl);
+
+        // Filtres
+        const filtersEl = document.createElement('div');
+        filtersEl.className = 'pub-filters';
+        filtersEl.innerHTML = `
+            <input class="pub-filter-input" type="text" id="pubPokemonInput"
+                   placeholder="NOM POKÉMON..." value="${pokemon}"
+                   oninput="onPubFilter()">
+            <input class="pub-filter-input" type="text" id="pubUserInput"
+                   placeholder="DRESSEUR..." value="${user}"
+                   oninput="onPubFilter()">
+            ${['Junk','Common','Uncommon','Rare','Epic','Legendary'].map(r =>
+                `<button class="pub-rarity-btn r-${r} ${rarity===r?'active':''}"
+                         onclick="togglePubRarity('${r}')">${r.slice(0,3).toUpperCase()}</button>`
+            ).join('')}
+            <span style="width:1px;height:16px;background:#333;display:inline-block;margin:0 2px"></span>
+            <button class="pub-status-btn s-all ${pubStatusFilter===''?'active':''}"
+                    onclick="setPubStatus('')">TOUS</button>
+            <button class="pub-status-btn s-pending ${pubStatusFilter==='pending'?'active':''}"
+                    onclick="setPubStatus('pending')">⏳ EN ATTENTE</button>
+            <button class="pub-status-btn s-accepted ${pubStatusFilter==='accepted'?'active':''}"
+                    onclick="setPubStatus('accepted')">✓ ÉCHANGÉS</button>
+            <span class="pub-count" id="pubCount"></span>
+        `;
+        pubSection.appendChild(filtersEl);
+
+        // Contenu
+        const listEl = document.createElement('div');
+        listEl.id = 'pubList';
+        listEl.style.padding = '8px 14px';
+        pubSection.appendChild(listEl);
+        container.appendChild(pubSection);
+
+        // Chargement
+        listEl.innerHTML = '<div class="trade-empty">CHARGEMENT...</div>';
+        try {
+            const res  = await fetch(`${API}/trade/public?${params}`);
+            const data = await res.json();
+            const trades = data.trades || [];
+            const total  = data.total  || 0;
+
+            document.getElementById('pubCount').innerText = `${total} ÉCHANGE${total > 1 ? 'S' : ''}`;
+            listEl.innerHTML = '';
+
+            // Filtre de statut côté client
+            const visibleTrades = pubStatusFilter
+                ? trades.filter(t => t.status === pubStatusFilter)
+                : trades;
+
+            if (visibleTrades.length === 0) {
+                listEl.innerHTML = '<div class="trade-empty">AUCUN ÉCHANGE TROUVÉ</div>';
+            } else {
+                visibleTrades.forEach(t => {
+                    const d = new Date(t.createdAt);
+                    const dateStr = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+                    const fromUrl = tradeSprite(t.fromSprite, t.fromCatchName);
+                    const toUrl   = tradeSprite(t.toSprite,   t.toCatchName);
+                    const fromColor = RARITY_COLORS[t.fromRarity] || '#555';
+                    const toColor   = RARITY_COLORS[t.toRarity]   || '#555';
+
+                    const item = document.createElement('div');
+                    item.className = 'pub-trade-item';
+                    item.innerHTML = `
+                        <div class="pub-trade-sprites">
+                            <div style="text-align:center">
+                                <img class="pub-trade-sprite" src="${fromUrl}"
+                                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                                <div style="font-size:8px;color:${fromColor};margin-top:2px">${t.fromCatchName}</div>
+                            </div>
+                            <div class="pub-trade-arrow">&#8652;</div>
+                            <div style="text-align:center">
+                                <img class="pub-trade-sprite" src="${toUrl}"
+                                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                                <div style="font-size:8px;color:${toColor};margin-top:2px">${t.toCatchName}</div>
+                            </div>
+                        </div>
+                        <div class="pub-trade-info">
+                            <div class="pub-trade-names">
+                                <span style="color:#fff">${t.from}</span>
+                                <span style="color:#555"> ↔ </span>
+                                <span style="color:#fff">${t.to}</span>
+                            </div>
+                            <div class="pub-trade-meta">📅 ${dateStr}</div>
+                            <div style="display:flex;gap:6px;margin-top:4px;align-items:center">
+                                <span style="font-size:8px;color:#ffae00">${t.fromValue||0}₽</span>
+                                <span style="font-size:8px;color:#555">↔</span>
+                                <span style="font-size:8px;color:#ffae00">${t.toValue||0}₽</span>
+                                ${t.status === 'accepted'
+                                    ? '<span style="font-size:8px;background:#0a2a0a;color:#1fdf64;padding:2px 5px;border-radius:2px">✓ ÉCHANGÉ</span>'
+                                    : '<span style="font-size:8px;background:#1a1a00;color:#ffae00;padding:2px 5px;border-radius:2px">⏳ EN ATTENTE</span>'
+                                }
+                            </div>
+                        </div>
+                        ${t.status === 'pending' && currentUser && currentUser.username.toLowerCase() === t.to.toLowerCase() ? `
+                        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+                            <button class="btn-accept" onclick="respondTrade('${t._id}','accept')">✓</button>
+                            <button class="btn-refuse" onclick="respondTrade('${t._id}','refuse')">✗</button>
+                        </div>` : t.status === 'pending' && currentUser && currentUser.username.toLowerCase() === t.from.toLowerCase() ? `
+                        <button class="btn-cancel" onclick="respondTrade('${t._id}','cancel')">ANNULER</button>
+                        ` : ''}
+                    `;
+                    listEl.appendChild(item);
+                });
+
+                // Pagination
+                if (total > 20) {
+                    const totalPages = Math.ceil(total / 20);
+                    const nav = document.createElement('div');
+                    nav.className = 'hist-nav';
+                    const btnPrev = document.createElement('button');
+                    btnPrev.className = 'page-btn'; btnPrev.innerHTML = '&#9664; PRÉC'; btnPrev.disabled = page === 0;
+                    btnPrev.onclick = () => renderPublicTrades(container, page-1, pubPokemonFilter, pubUserFilter, pubRarityFilter);
+                    const label = document.createElement('span');
+                    label.className = 'page-info'; label.innerText = (page+1) + ' / ' + totalPages;
+                    const btnNext = document.createElement('button');
+                    btnNext.className = 'page-btn'; btnNext.innerHTML = 'SUIV &#9654;'; btnNext.disabled = page >= totalPages-1;
+                    btnNext.onclick = () => renderPublicTrades(container, page+1, pubPokemonFilter, pubUserFilter, pubRarityFilter);
+                    nav.append(btnPrev, label, btnNext);
+                    listEl.appendChild(nav);
+                }
+            }
+        } catch {
+            listEl.innerHTML = '<div class="trade-empty">ERREUR CHARGEMENT</div>';
+        }
+    }
+
+    let pubFilterTimer = null;
+    function onPubFilter() {
+        clearTimeout(pubFilterTimer);
+        pubFilterTimer = setTimeout(() => {
+            pubPokemonFilter = (document.getElementById('pubPokemonInput')?.value || '').trim();
+            pubUserFilter    = (document.getElementById('pubUserInput')?.value || '').trim();
+            const container  = document.getElementById('mainContainer');
+            renderPublicTrades(container, 0, pubPokemonFilter, pubUserFilter, pubRarityFilter);
+        }, 400);
+    }
+
+    function setPubStatus(status) {
+        pubStatusFilter = status;
+        const container = document.getElementById('mainContainer');
+        renderPublicTrades(container, 0, pubPokemonFilter, pubUserFilter, pubRarityFilter);
+    }
+
+    function togglePubRarity(rarity) {
+        pubRarityFilter = pubRarityFilter === rarity ? '' : rarity;
+        document.querySelectorAll('.pub-rarity-btn').forEach(b => {
+            b.classList.toggle('active', b.classList.contains('r-' + pubRarityFilter));
+        });
+        const container = document.getElementById('mainContainer');
+        renderPublicTrades(container, 0, pubPokemonFilter, pubUserFilter, pubRarityFilter);
+    }
+
+    async function renderHistorySection(container, page) {
+        const old = document.getElementById('histSection');
+        if (old) old.remove();
+        const skip      = page * 30;
+        const histRes   = await fetch(API + '/trade/history/' + currentUser.username + '?skip=' + skip, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('jwt') } });
+        const histData  = await histRes.json();
+        const total     = histData.total || 0;
+        const totalPages = Math.ceil(total / 30) || 1;
+        const histSection = document.createElement('div');
+        histSection.className = 'trade-tab-section';
+        histSection.id        = 'histSection';
+        histSection.innerHTML = '<div class="trade-tab-title">&#128196; HISTORIQUE (' + total + ')</div>';
+        if (total === 0) {
+            histSection.innerHTML += '<div class="trade-empty">AUCUN ÉCHANGE TERMINÉ</div>';
+        } else {
+            histData.history.forEach(function(t) {
+                const isMine = t.from.toLowerCase() === currentUser.username.toLowerCase();
+                const other  = isMine ? t.to : t.from;
+                const d      = new Date(t.completedAt || t.createdAt);
+                const date   = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+                const statusLabels = { accepted:'✓ ACCEPTÉ', refused:'✗ REFUSÉ', cancelled:'✕ ANNULÉ' };
+                const item   = document.createElement('div');
+                item.className = 'trade-history-item ' + t.status;
+                const fromSrc = tradeSprite(t.fromSprite, t.fromCatchName);
+                const toSrc   = tradeSprite(t.toSprite,   t.toCatchName);
+                item.innerHTML = '<div class="trade-item-sprites"><img class="trade-item-sprite" src="' + fromSrc + '" onerror="this.onerror=null;this.src=\'' + DEFAULT_IMG + '\'"><div class="trade-item-arrow">&#8652;</div><img class="trade-item-sprite" src="' + toSrc + '" onerror="this.onerror=null;this.src=\'' + DEFAULT_IMG + '\'"></div><div class="trade-item-info"><div class="trade-item-names">' + t.fromCatchName + ' ↔ ' + t.toCatchName + '</div><div class="trade-item-meta">' + (isMine ? 'AVEC : ' : 'DE : ') + other + ' • ' + date + '</div><div style="display:flex;gap:6px;margin-top:4px;align-items:center"><span style="font-size:8px;color:#ffae00">' + (t.fromValue||0) + '&#8381;</span><span style="font-size:8px;color:#555">&#8596;</span><span style="font-size:8px;color:#ffae00">' + (t.toValue||0) + '&#8381;</span></div></div><span class="trade-history-status status-' + t.status + '">' + statusLabels[t.status] + '</span>';
+                histSection.appendChild(item);
+            });
+            if (total > 30) {
+                const nav = document.createElement('div');
+                nav.className = 'hist-nav';
+                const btnPrev = document.createElement('button');
+                btnPrev.className = 'page-btn'; btnPrev.innerHTML = '&#9664; PRÉC'; btnPrev.disabled = page === 0;
+                btnPrev.onclick = function() { renderHistorySection(container, page - 1); };
+                const label = document.createElement('span');
+                label.className = 'page-info'; label.innerText = (page + 1) + ' / ' + totalPages;
+                const btnNext = document.createElement('button');
+                btnNext.className = 'page-btn'; btnNext.innerHTML = 'SUIV &#9654;'; btnNext.disabled = page >= totalPages - 1;
+                btnNext.onclick = function() { renderHistorySection(container, page + 1); };
+                nav.append(btnPrev, label, btnNext);
+                histSection.appendChild(nav);
+            }
+        }
+        container.appendChild(histSection);
+    }
+
+    function createTradeItem(t, type) {
+        const item = document.createElement('div');
+        item.className = 'trade-item';
+        const d       = new Date(t.createdAt);
+        const dateStr = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+        const safeId  = 'ta_' + String(t._id);
+        item.innerHTML = `
+            <div class="trade-item-sprites">
+                <img class="trade-item-sprite" src="${tradeSprite(t.fromSprite, t.fromCatchName)}"
+                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+                <div class="trade-item-arrow">&#8652;</div>
+                <img class="trade-item-sprite" src="${tradeSprite(t.toSprite, t.toCatchName)}"
+                     onerror="this.onerror=null;this.src='${DEFAULT_IMG}'">
+            </div>
+            <div class="trade-item-info">
+                <div class="trade-item-names">${t.fromCatchName} ↔ ${t.toCatchName}</div>
+                <div class="trade-item-meta">${type === 'received' ? 'DE : ' + t.from : 'POUR : ' + t.to} • ${dateStr}</div>
+                <div style="display:flex;gap:6px;margin-top:4px;align-items:center">
+                    <span style="font-size:8px;color:#ffae00">${t.fromValue||0}₽</span>
+                    <span style="font-size:8px;color:#555">↔</span>
+                    <span style="font-size:8px;color:#ffae00">${t.toValue||0}₽</span>
+                </div>
+            </div>
+            <div class="trade-item-actions" id="${safeId}"></div>
+        `;
+        const actions = item.querySelector(`#${safeId}`);
+        if (type === 'received') {
+            actions.innerHTML = `
+                <button class="btn-accept" onclick="respondTrade('${t._id}','accept')">✓</button>
+                <button class="btn-refuse" onclick="respondTrade('${t._id}','refuse')">✗</button>
+            `;
+        } else {
+            actions.innerHTML = `<button class="btn-cancel" onclick="respondTrade('${t._id}','cancel')">ANNULER</button>`;
+        }
+        return item;
+    }
+
+    async function respondTrade(tradeId, action) {
+        const endpoint = action === 'accept' ? '/trade/accept' : action === 'refuse' ? '/trade/refuse' : '/trade/cancel';
+        try {
+            const res  = await fetch(`${API}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jwt')}` },
+                body: JSON.stringify({ tradeId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const msgs = { accept: '✅ Échange effectué !', refuse: '❌ Échange refusé.', cancel: '🚫 Échange annulé.' };
+                showToast(msgs[action], action === 'accept' ? 'success' : 'error');
+                renderTradeTab();
+                if (action === 'accept') fetchAllData();
+            } else {
+                showToast('Erreur : ' + (data.error || 'Inconnue'), 'error');
+            }
+        } catch { showToast('Erreur serveur', 'error'); }
+    }
+
+    // ─── TOGGLE REFUS ÉCHANGE ─────────────────────────────────────────────────
+    async function toggleTradeRefused(catchId, btn) {
+        try {
+            const res  = await fetch(`${API}/catch/toggle-trade/${catchId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt')}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                const refused = data.tradeRefused;
+                btn.className = `btn-toggle-trade ${refused ? 'closed' : 'open'}`;
+                btn.innerText = refused ? '🔒 REFUSÉ' : '✅ AUTORISÉ';
+                // Mettre à jour dans userCatches pour que la carte se mette à jour
+                userCatches.forEach(c => {
+                    if (String(c._id) === String(catchId)) c.tradeRefused = refused;
+                });
+                renderDisplay();
+            } else {
+                showToast('Erreur : ' + (data.error || 'Inconnue'), 'error');
+            }
+        } catch {
+            showToast('Erreur serveur', 'error');
+        }
+    }
+
+    // ─── UTILS ─────────────────────────────────────────────────────────────────
+    function setStatus(msg) { document.getElementById('status').innerText = msg; }
+
+</script>
+</body>
+</html>
